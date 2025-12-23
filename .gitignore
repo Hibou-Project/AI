@@ -6,3 +6,10 @@ notebooks/dataset/ds_2_noaugment_test.hf
 notebooks/dataset/ds_2_noaugment_big.hf/
 .idea
 *.pt
+*.fedorarog
+latest-run
+wandb
+notebooks/dataset/ds_0-01_melspecto_aug_0-5_balanced_chunked.hf
+notebooks/dataset/ds_1_melspecto_noaug_balanced_chunked.hf
+notebooks/AI/unsupervised/ssl_checkpoints
+notebooks/dataset/ds_1_raw_aug_0-5_balanced_chunked.hf
