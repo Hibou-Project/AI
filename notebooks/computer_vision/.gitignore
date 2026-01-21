@@ -1,5 +1,0 @@
-*.pt
-/runs/
-/datasets/
-/outputs/
-/models/*.gz
