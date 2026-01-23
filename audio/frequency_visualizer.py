@@ -201,6 +201,29 @@ plt.show(block=False)
 plt.pause(0.1)
 
 
+current_frequency = 20
+frequency_step = 100
+src_pipeline_str = f"audiotestsrc name=src freq={current_frequency} ! audioconvert ! audioresample ! autoaudiosink"
+src_pipeline = Gst.parse_launch(src_pipeline_str)
+frequencyElement = src_pipeline.get_by_name("src")
+
+
+def frequencyUp():
+    global current_frequency
+    global frequencyElement
+
+    current_frequency += frequency_step
+    frequencyElement.set_property("freq", current_frequency)
+
+
+def frequenceDown():
+    global current_frequency
+    global frequencyElement
+
+    current_frequency -= frequency_step
+    frequencyElement.set_property("freq", current_frequency)
+
+
 def on_key_press(event):
     global is_paused
     # Pause/Resume
@@ -211,11 +234,13 @@ def on_key_press(event):
             line1.set_color("gray")
             ax1.set_title("Time Domain Signal (PAUSED)")
             fig.canvas.draw_idle()
+            src_pipeline.set_state(Gst.State.PAUSED)
         else:
             print("*** RESUMED ***")
             line1.set_color("blue")
             ax1.set_title("Time Domain Signal")
             fig.canvas.draw_idle()
+            src_pipeline.set_state(Gst.State.PLAYING)
 
     # Zoom Logic
     elif event.key in ["+", "=", "up"]:
@@ -247,6 +272,13 @@ def on_key_press(event):
         fig.canvas.draw_idle()
         print("Zoom Reset")
 
+    elif event.key == "z":
+        frequencyUp()
+        print(f"Frequency Up: {current_frequency} Hz")
+    elif event.key == "a":
+        frequenceDown()
+        print(f"Frequency Down: {current_frequency} Hz")
+
 
 fig.canvas.mpl_connect("key_press_event", on_key_press)
 
@@ -255,6 +287,9 @@ appsink.set_property("sync", False)
 appsink.connect("new-sample", handle_new_sample)
 
 if pipeline.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
+    raise RuntimeError("Failed to start pipeline")
+
+if src_pipeline.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
     raise RuntimeError("Failed to start pipeline")
 
 print("Visualization running. Close the plot window or press Ctrl+C to stop.")
@@ -325,6 +360,9 @@ finally:
     plt.close("all")
 
     if pipeline.set_state(Gst.State.NULL) == Gst.StateChangeReturn.FAILURE:
+        print("Warning: Failed to cleanly stop pipeline")
+
+    if src_pipeline.set_state(Gst.State.NULL) == Gst.StateChangeReturn.FAILURE:
         print("Warning: Failed to cleanly stop pipeline")
 
     print("Stopped.")
