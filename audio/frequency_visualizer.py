@@ -25,6 +25,7 @@ DISPLAY_SAMPLES = int(SAMPLE_RATE * DISPLAY_DURATION)
 signal_buffer = np.zeros(DISPLAY_SAMPLES)
 buffer_lock = threading.Lock()
 running = True
+is_paused = False  # Flag for pause functionality
 
 print(pipeline_str)
 
@@ -38,63 +39,43 @@ appsink = pipeline.get_by_name("app_sink")
 def bytes_to_audio(raw_bytes):
     """
     Convert float 32 LE raw bytes to a normalized NumPy float32 array.
-
-    Args:
-        raw_bytes (bytes): Raw 32 LE float audio data.
-
-    Returns:
-        np.ndarray: 1D array of float32 samples in range [-1.0, 1.0].
     """
-    # EOSs coming from the GST pipelines generates NaNs, that can be played as audio spikes,
-    # and can also cause problems in the downstream code (e.g.: librosa can complain).
-    # Thus, we need to remove them.
+    # Remove NaNs to prevent audio spikes and calculation errors
     return np.nan_to_num(np.frombuffer(raw_bytes, dtype=np.float32))
 
 
 def on_new_sample(data, reset: bool):
     global sinks_data, signal_buffer
 
-    if reset:  # It may be requested by a discontinuity, or something else.
+    if reset:
         sinks_data = b""
 
     # store data per channel
     sinks_data += data
 
-    # If required_buffer_size is 0, process samples directly without buffering
     if required_buffer_size == 0:
-        # Process all available data immediately
         if len(sinks_data) > 0:
             buff = sinks_data
             sinks_data = b""
 
-            # Convert buffer to audio samples
             audio_samples = bytes_to_audio(buff)
 
-            # Update the signal buffer for visualization
             if len(audio_samples) > 0:
-                print(
-                    f"Processing {len(audio_samples)} audio samples, max amplitude: {np.max(np.abs(audio_samples)):.4f}"
-                )
                 with buffer_lock:
-                    # Roll the buffer and add new samples
                     if len(audio_samples) >= DISPLAY_SAMPLES:
                         signal_buffer[:] = audio_samples[-DISPLAY_SAMPLES:]
                     else:
                         signal_buffer[:] = np.roll(signal_buffer, -len(audio_samples))
                         signal_buffer[-len(audio_samples) :] = audio_samples
     else:
-        # Use received bytes instead of duration. This is more accurate.
         while len(sinks_data) >= required_buffer_size:
             buff = sinks_data[:required_buffer_size]
             sinks_data = sinks_data[required_buffer_size:]
 
-            # Convert buffer to audio samples
             audio_samples = bytes_to_audio(buff)
 
-            # Update the signal buffer for visualization
             if len(audio_samples) > 0:
                 with buffer_lock:
-                    # Roll the buffer and add new samples
                     if len(audio_samples) >= DISPLAY_SAMPLES:
                         signal_buffer[:] = audio_samples[-DISPLAY_SAMPLES:]
                     else:
@@ -115,10 +96,8 @@ def handle_new_sample(sink):
 
     try:
         data = buf.extract_dup(0, buf.get_size())
-        print(f"Received {len(data)} bytes of audio data")
-        on_new_sample(data, reset)  # pass raw data upward
+        on_new_sample(data, reset)
     except Exception as e:
-        # Log error or handle appropriately
         print(f"Error in on_sample callback for channel {channel_id}: {e}")
         import traceback
 
@@ -129,7 +108,7 @@ def handle_new_sample(sink):
 
 
 def check_bus_messages():
-    """Check GStreamer bus for messages (call periodically)"""
+    """Check GStreamer bus for messages"""
     global running
     bus = pipeline.get_bus()
     if bus:
@@ -146,12 +125,6 @@ def check_bus_messages():
             elif message.type == Gst.MessageType.EOS:
                 print("End of stream")
                 running = False
-            elif message.type == Gst.MessageType.STATE_CHANGED:
-                if message.src == pipeline:
-                    old_state, new_state, pending_state = message.parse_state_changed()
-                    print(
-                        f"Pipeline state changed: {old_state.value_nick} -> {new_state.value_nick}"
-                    )
             message = bus.pop_filtered(
                 Gst.MessageType.ERROR
                 | Gst.MessageType.EOS
@@ -159,9 +132,9 @@ def check_bus_messages():
             )
 
 
-# Set up the plot with fixed axes
+# --- Plot Setup ---
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
-time_axis = np.linspace(0, DISPLAY_DURATION * 1000, DISPLAY_SAMPLES)  # in milliseconds
+time_axis = np.linspace(0, DISPLAY_DURATION * 1000, DISPLAY_SAMPLES)
 freq_axis = np.fft.rfftfreq(DISPLAY_SAMPLES, 1 / SAMPLE_RATE)
 
 # Time domain plot
@@ -170,60 +143,180 @@ ax1.set_xlabel("Time (ms)")
 ax1.set_ylabel("Amplitude")
 ax1.set_title("Time Domain Signal")
 ax1.set_xlim(0, DISPLAY_DURATION * 1000)
-ax1.set_ylim(-1.5, 1.5)
+ax1.set_ylim(-0.4, 0.4)  # Initial Y-limits
 ax1.grid(True, alpha=0.3)
 
-# FFT plot
+# Annotations
+max_amp_text = ax1.text(
+    0.02,
+    0.95,
+    "",
+    transform=ax1.transAxes,
+    fontsize=10,
+    verticalalignment="top",
+    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+)
+min_amp_text = ax1.text(
+    0.02,
+    0.85,
+    "",
+    transform=ax1.transAxes,
+    fontsize=10,
+    verticalalignment="top",
+    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+)
+peak_amp_text = ax1.text(
+    0.02,
+    0.75,
+    "",
+    transform=ax1.transAxes,
+    fontsize=10,
+    verticalalignment="top",
+    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+)
+
+# Frequency plot
 magnitude_db = np.zeros(len(freq_axis))
 (line2,) = ax2.plot(freq_axis, magnitude_db, "r-", linewidth=0.5)
 ax2.set_xlabel("Frequency (Hz)")
 ax2.set_ylabel("Magnitude (dB)")
 ax2.set_title("Frequency Spectrum")
-ax2.set_xlim(0, min(5000, SAMPLE_RATE / 2))  # Show up to 5kHz or Nyquist
-ax2.set_ylim(-100, 20)
+ax2.set_xlim(0, min(5000, SAMPLE_RATE / 2))
+ax2.set_ylim(-100, 20)  # Initial Y-limits
 ax2.grid(True, alpha=0.3)
 
+freq_text = ax2.text(
+    0.02,
+    0.95,
+    "",
+    transform=ax2.transAxes,
+    fontsize=10,
+    verticalalignment="top",
+    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+)
+
 plt.tight_layout()
-plt.ion()  # Turn on interactive mode
+plt.ion()
 plt.show(block=False)
 plt.pause(0.1)
 
 
+def on_key_press(event):
+    global is_paused
+    # Pause/Resume
+    if event.key == " ":
+        is_paused = not is_paused
+        if is_paused:
+            print("\n*** PAUSED (Press SPACE to resume) ***")
+            line1.set_color("gray")
+            ax1.set_title("Time Domain Signal (PAUSED)")
+            fig.canvas.draw_idle()
+        else:
+            print("*** RESUMED ***")
+            line1.set_color("blue")
+            ax1.set_title("Time Domain Signal")
+            fig.canvas.draw_idle()
+
+    # Zoom Logic
+    elif event.key in ["+", "=", "up"]:
+        # Zoom In
+        for ax in [ax1, ax2]:
+            ylims = ax.get_ylim()
+            y_range = ylims[1] - ylims[0]
+            new_range = y_range * 0.8  # Reduce range by 20%
+            center = (ylims[0] + ylims[1]) / 2
+            ax.set_ylim(center - new_range / 2, center + new_range / 2)
+        fig.canvas.draw_idle()
+        print("Zoom In")
+
+    elif event.key in ["-", "_", "down"]:
+        # Zoom Out
+        for ax in [ax1, ax2]:
+            ylims = ax.get_ylim()
+            y_range = ylims[1] - ylims[0]
+            new_range = y_range * 1.2  # Increase range by 20%
+            center = (ylims[0] + ylims[1]) / 2
+            ax.set_ylim(center - new_range / 2, center + new_range / 2)
+        fig.canvas.draw_idle()
+        print("Zoom Out")
+
+    elif event.key == "r":
+        # Reset Zoom
+        ax1.set_ylim(-0.4, 0.4)
+        ax2.set_ylim(-100, 20)
+        fig.canvas.draw_idle()
+        print("Zoom Reset")
+
+
+fig.canvas.mpl_connect("key_press_event", on_key_press)
+
 appsink.set_property("emit-signals", True)
-appsink.set_property("sync", False)  # Don't sync to clock for real-time processing
+appsink.set_property("sync", False)
 appsink.connect("new-sample", handle_new_sample)
 
 if pipeline.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
     raise RuntimeError("Failed to start pipeline")
 
 print("Visualization running. Close the plot window or press Ctrl+C to stop.")
+print("Controls:")
+print("  [SPACE] : Pause/Resume")
+print("  [+ / Up]   : Zoom In (Amplitude)")
+print("  [- / Down] : Zoom Out (Amplitude)")
+print("  [r]     : Reset Zoom")
 print("Waiting for audio data...")
 
 try:
     while running and plt.fignum_exists(fig.number):
-        # Check for GStreamer bus messages
         check_bus_messages()
 
-        with buffer_lock:
-            local_buffer = signal_buffer.copy()
+        if not is_paused:
+            # 1. Fetch Data
+            with buffer_lock:
+                local_buffer = signal_buffer.copy()
 
-        # Update time domain plot
-        line1.set_ydata(local_buffer)
+            # 2. Update Time Domain Plot Data
+            line1.set_ydata(local_buffer)
 
-        # Compute and update FFT
-        if np.any(local_buffer != 0):
-            # Apply window to reduce spectral leakage
-            windowed_signal = local_buffer * np.hanning(len(local_buffer))
-            fft = np.fft.rfft(windowed_signal)
-            magnitude_db = 20 * np.log10(
-                np.abs(fft) + 1e-10
-            )  # Convert to dB, avoid log(0)
-            line2.set_ydata(magnitude_db)
+            # 3. Update Text Stats
+            if len(local_buffer) > 0:
+                max_amp = np.max(local_buffer)
+                min_amp = np.min(local_buffer)
+                peak_amp = np.max(np.abs(local_buffer))
 
-        # Redraw the canvas
-        fig.canvas.draw_idle()
-        fig.canvas.flush_events()
-        sleep(0.05)  # Update rate ~20 FPS
+                max_amp_text.set_text(f"Max: {max_amp:.4f}")
+                min_amp_text.set_text(f"Min: {min_amp:.4f}")
+                peak_amp_text.set_text(f"Peak: {peak_amp:.4f}")
+
+            # 4. Compute FFT & Update Frequency Plot
+            if np.any(local_buffer != 0):
+                windowed_signal = local_buffer * np.hanning(len(local_buffer))
+                fft = np.fft.rfft(windowed_signal)
+                magnitude = np.abs(fft)
+                magnitude_db = 20 * np.log10(magnitude + 1e-10)
+                line2.set_ydata(magnitude_db)
+
+                if len(magnitude) > 1:
+                    max_idx = np.argmax(magnitude[1:]) + 1
+                    dominant_freq = freq_axis[max_idx]
+                    dominant_mag_db = magnitude_db[max_idx]
+
+                    if dominant_mag_db > -80:
+                        freq_text.set_text(
+                            f"Dominant: {dominant_freq:.1f} Hz ({dominant_mag_db:.1f} dB)"
+                        )
+                    else:
+                        freq_text.set_text("Dominant: (below noise floor)")
+                else:
+                    freq_text.set_text("Dominant: N/A")
+
+            # 5. Draw
+            fig.canvas.draw_idle()
+            fig.canvas.flush_events()
+            sleep(0.01)
+        else:
+            # Paused state: Keep window responsive, don't fetch/process data
+            fig.canvas.flush_events()
+            sleep(0.05)
 
 except KeyboardInterrupt:
     print("\nStopping...")
