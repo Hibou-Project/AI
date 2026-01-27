@@ -17,3 +17,5 @@ notebooks/dataset/ds_1_raw_aug_0-5_balanced_chunked.hf
 /notebooks/computer_vision/datasets/
 /notebooks/AI/transformers/drone_detector/
 /notebooks/AI/computer_vision/drone_vit_checkpoints
+notebooks/AI/yolo/spectrograms/
+*.hf
