@@ -349,6 +349,7 @@ try:
             fig.canvas.flush_events()
             sleep(0.01)
         else:
+            print("pending")
             # Paused state: Keep window responsive, don't fetch/process data
             fig.canvas.flush_events()
             sleep(0.05)
