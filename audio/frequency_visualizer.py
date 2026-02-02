@@ -12,7 +12,7 @@ from gi.repository import Gst, GLib
 
 channel_id = 0
 # Fixed pipeline: explicitly specify F32LE output format
-pipeline_str = f'udpsrc address=239.69.250.255 port=5005 multicast-iface=enp2s0 caps="application/x-rtp, media=(string)audio, clock-rate=(int)48000, channels=(int)4, encoding-name=(string)L24, payload=(int)99" ! rtpjitterbuffer latency=100 ! rtpL24depay ! queue ! audioconvert ! audio/x-raw, format=F32LE ! volume volume=1.0 ! deinterleave name=d d.src_{channel_id} ! queue ! appsink name=app_sink sync=false'
+pipeline_str = f'udpsrc address=239.69.250.255 port=5005 multicast-iface=enp0s13f0u1u4 caps="application/x-rtp, media=(string)audio, clock-rate=(int)48000, channels=(int)4, encoding-name=(string)L24, payload=(int)99" ! rtpjitterbuffer latency=100 ! rtpL24depay ! queue ! audioconvert ! audio/x-raw, format=F32LE ! volume volume=1.0 ! deinterleave name=d d.src_{channel_id} ! queue ! appsink name=app_sink sync=false'
 alignment = 4  # Because all our data is F32LE.
 # Process samples directly without buffering (set to 0 means process immediately)
 required_buffer_size = 0
@@ -147,7 +147,7 @@ ax1.set_ylim(-0.4, 0.4)  # Initial Y-limits
 ax1.grid(True, alpha=0.3)
 
 # Annotations
-max_amp_text = ax1.text(
+mean_wave_text = ax1.text(
     0.02,
     0.95,
     "",
@@ -312,16 +312,6 @@ try:
             # 2. Update Time Domain Plot Data
             line1.set_ydata(local_buffer)
 
-            # 3. Update Text Stats
-            if len(local_buffer) > 0:
-                max_amp = np.max(local_buffer)
-                min_amp = np.min(local_buffer)
-                peak_amp = np.max(np.abs(local_buffer))
-
-                max_amp_text.set_text(f"Max: {max_amp:.4f}")
-                min_amp_text.set_text(f"Min: {min_amp:.4f}")
-                peak_amp_text.set_text(f"Peak: {peak_amp:.4f}")
-
             # 4. Compute FFT & Update Frequency Plot
             if np.any(local_buffer != 0):
                 windowed_signal = local_buffer * np.hanning(len(local_buffer))
@@ -335,6 +325,30 @@ try:
                     dominant_freq = freq_axis[max_idx]
                     dominant_mag_db = magnitude_db[max_idx]
 
+                    # 3. Update Text Stats
+                    if len(local_buffer) > 0:
+                        peak_amp = np.max(np.abs(local_buffer))
+                        min_amp = np.min(local_buffer)
+                        samples_per_wave = int(SAMPLE_RATE / dominant_freq)
+                        # Trim buffer to whole number of waves
+                        n_waves = len(local_buffer) // samples_per_wave
+                        trimmed = local_buffer[:n_waves * samples_per_wave]
+
+                        # Reshape so each row is one wave
+                        waves = trimmed.reshape(n_waves, samples_per_wave)
+
+                        # Max of each wave
+                        wave_maxima = np.max(waves, axis=1)
+
+                        # Mean of wave maxima
+                        mean_wave_max = np.mean(wave_maxima)
+
+                        # peak_amp = np.max(np.abs(local_buffer))
+
+                        peak_amp_text.set_text(f"Max: {peak_amp:.4f}")
+                        min_amp_text.set_text(f"Min: {min_amp:.4f}")
+                        mean_wave_text.set_text(f"Mean wave: {mean_wave_max:.4f}")
+
                     if dominant_mag_db > -80:
                         freq_text.set_text(
                             f"Dominant: {dominant_freq:.1f} Hz ({dominant_mag_db:.1f} dB)"
@@ -343,6 +357,8 @@ try:
                         freq_text.set_text("Dominant: (below noise floor)")
                 else:
                     freq_text.set_text("Dominant: N/A")
+
+
 
             # 5. Draw
             fig.canvas.draw_idle()
