@@ -35,18 +35,42 @@ boot.kernelPackages = pkgs.linuxPackages_5_4;
      ];
    };
 
-   environment.systemPackages = with pkgs; [
-     vim
-     wget
-     pciutils
-     nano
-     git
-   ];
+  environment.systemPackages = with pkgs; [
+    vim
+    wget
+    pciutils
+    nano
+    git
+  ];
+  programs.zsh = {
+    enable = true;
+
+    ohMyZsh = {
+      enable = true;
+    };
+
+    autosuggestions.enable = true;
+    syntaxHighlighting.enable = true;
+
+    shellInit = ''
+      # Disable zsh's newuser startup script that prompts you to create
+      # a ~/.z* file if missing
+      zsh-newuser-install() { :; }
+    '';
+  };
 
   nixpkgs.config.allowUnfree = true;
-  # Enable the OpenSSH daemon.
+    # Enable the OpenSSH daemon.
   services.openssh.enable = true;
 
-  system.stateVersion = "25.11";
-  rocmTargets = ["gfx803" "gfx900" "gfx906"];
+  system.stateVersion = "23.11";
+#  rocmTargets = ["gfx803" "gfx900" "gfx906"];
+
+#  nixpkgs.overlays = [
+#    (import (fetchGit {
+#      url = "https://github.com/nixos-rocm/nixos-rocm.git";
+#      ref = "master";
+#    }))
+#  ];
+
 }
