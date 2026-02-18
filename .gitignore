@@ -11,12 +11,12 @@ latest-run
 wandb
 notebooks/dataset/ds_0-01_melspecto_aug_0-5_balanced_chunked.hf
 notebooks/dataset/ds_1_melspecto_noaug_balanced_chunked.hf
-notebooks/AI/unsupervised/ssl_checkpoints
+notebooks/old/unsupervised/ssl_checkpoints
 notebooks/dataset/ds_1_raw_aug_0-5_balanced_chunked.hf
 /notebooks/computer_vision/.env
 /notebooks/computer_vision/datasets/
-/notebooks/AI/transformers/drone_detector/
-/notebooks/AI/computer_vision/drone_vit_checkpoints
-notebooks/computer_vision/runs/
-notebooks/AI/yolo/spectrograms/
+notebooks/old/transformers/drone_detector/
+notebooks/old/computer_vision/drone_vit_checkpoints
+notebooks/old/yolo/spectrograms/
+notebooks/old/yolo/spectrograms
 *.hf
