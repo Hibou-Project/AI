@@ -80,4 +80,4 @@ def upload_directory(api, token, local_dir: str, repo_id: str, repo_type: str = 
     print(f"Uploaded: {uploaded_count}, Skipped: {skipped_count}")
 
 
-upload_directory(api, token, str(LOCAL_DIR) + "/output", REPO_ID, REPO_TYPE)
+upload_directory(api, token, str(LOCAL_DIR) + "/output_cleaned", REPO_ID, REPO_TYPE)
