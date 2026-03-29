@@ -15,8 +15,10 @@ notebooks/old/unsupervised/ssl_checkpoints
 notebooks/dataset/ds_1_raw_aug_0-5_balanced_chunked.hf
 /notebooks/computer_vision/.env
 /notebooks/computer_vision/datasets/
-notebooks/old/transformers/drone_detector/
-notebooks/old/computer_vision/drone_vit_checkpoints
-notebooks/old/yolo/spectrograms/
-notebooks/old/yolo/spectrograms
+audio/old/transformers/drone_detector/
+audio/old/computer_vision/drone_vit_checkpoints
+audio/old/yolo/spectrograms/
+audio/old/yolo/spectrograms
 *.hf
+local/*
+*.pth
