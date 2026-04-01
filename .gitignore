@@ -22,3 +22,6 @@ audio/old/yolo/spectrograms
 *.hf
 local/*
 *.pth
+vision/datasets
+vision/datasets/
+.env
