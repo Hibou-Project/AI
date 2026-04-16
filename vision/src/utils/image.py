@@ -56,3 +56,16 @@ def apply_image_transformations(image, transformation):
 
         case _:
             return cv2.cvtColor(np_image, cv2.IMREAD_UNCHANGED)
+
+def get_image_channels_from_filter(filter_name) -> int | None:
+    match filter_name:
+        case "GRAY":
+            return 1
+        case "RGB":
+            return 3
+        case "SOBEL":
+            return 1
+        case "CANNY":
+            return 1
+        case _:
+            return None

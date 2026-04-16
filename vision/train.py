@@ -23,3 +23,8 @@ if __name__ == "__main__":
         image_transform=config["global"]["image_transform"],
         load_label_other=config["labels"]["load_other"]
     )
+
+    dataset.save_dataset_settings(
+        image_transform=config["global"]["image_transform"],
+        load_label_other=config["labels"]["load_other"]
+    )
