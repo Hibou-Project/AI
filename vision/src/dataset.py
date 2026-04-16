@@ -1,6 +1,7 @@
-from datasets import load_dataset, Image, concatenate_datasets, DatasetDict
+from datasets import load_dataset, concatenate_datasets, DatasetDict
 from .utils.image import apply_image_transformations
 from .utils.label import parse_label
+from huggingface_hub import HfApi
 from pathlib import Path
 from tqdm import tqdm
 
@@ -11,33 +12,43 @@ import os
 class Dataset:
 
     def __init__(self, hf_url: str = None, path: str = None, hf_revision: str = "main", save_dir: str = None):
-        self.dataset = None
-        self.hf_url = hf_url
-        self.path = path
-        self.hf_revision = hf_revision
-        self.root_dir = None
+        self._dataset = None
+        self._hf_url = hf_url
+        self._path = path
+        self._hf_revision = hf_revision
+        self._root_dir = None
 
-        if self.hf_url is not None and self.path is not None:
+        if self._hf_url is not None and self._path is not None:
             raise RuntimeError("Only one of hf_url or path can be specified.")
-        self.is_online = self.hf_url is not None
+        self._is_online = self._hf_url is not None
 
-        if self.is_online:
+        if self._is_online:
             if save_dir is None:
                 raise RuntimeError("Missing argument. Save dataset directory not set.")
-            self.root_dir = save_dir
+            self._root_dir = save_dir
             self._load_online_dataset()
+            self._name = self._hf_url.split("/")[-1]
         else:
             self._load_local_dataset()
+            self._name = Path(self._path).name
 
     def _load_online_dataset(self):
-        self.dataset = load_dataset(self.hf_url, revision=self.hf_revision)
+        self._dataset = load_dataset(self._hf_url, revision=self._hf_revision)
 
     def _load_local_dataset(self):
-        self.dataset = self.path
-        self.root_dir = Path(self.path)
+        self._dataset = self._path
+        self._root_dir = Path(self._path)
+
+    def _get_dataset_sha(self):
+        api = HfApi()
+        info = api.dataset_info(self._hf_url)
+        return info.sha
+
+    def _get_export_marker_path(self):
+        return os.path.join(self._root_dir, ".export_sha")
 
     def split(self, seed: int, base_split="train_validation_test", label_column="class_id"):
-        if self.dataset is None:
+        if self._dataset is None:
             raise RuntimeError("Dataset not loaded.")
         train_ratio = [0.8, 0.6]  # [class 0, class 1]
         valid_ratio = [0.1, 0.2]
@@ -53,7 +64,7 @@ class Dataset:
         num_classes = len(train_ratio)
 
         for cls in range(num_classes):
-            cls_ds = self.dataset[base_split].filter(
+            cls_ds = self._dataset[base_split].filter(
                 lambda x: x[label_column] == cls
             )
 
@@ -71,20 +82,40 @@ class Dataset:
         valid_ds = concatenate_datasets(valid_parts).shuffle(seed=seed)
         test_ds = concatenate_datasets(test_parts).shuffle(seed=seed)
 
-        self.dataset = DatasetDict({
+        self._dataset = DatasetDict({
             "train": train_ds,
             "validation": valid_ds,
             "test": test_ds,
         })
 
     def export_to_yolo(self, image_transform, load_label_other: bool):
-        if self.dataset is None:
+        if self._dataset is None:
             raise RuntimeError("Dataset not loaded.")
-        if self.root_dir is None:
+        if self._root_dir is None:
             raise RuntimeError("Save dataset directory not set.")
 
+        if not self._is_online:
+            print("Skipping export. Dataset is not online.")
+            return
+
+        dataset_full_name = self._name + "_" + image_transform
+        save_dir = Path(self._root_dir, dataset_full_name)
+
+        current_sha = self._get_dataset_sha()
+        marker_path = self._get_export_marker_path()
+        if os.path.exists(marker_path):
+            with open(marker_path, "r") as f:
+                saved_sha = f.read().strip()
+            if saved_sha == current_sha and not save_dir.exists():
+                print("Dataset already exported, but files do not exist. Re-exporting.")
+            elif saved_sha == current_sha:
+                print("Dataset already exported. Skipping.")
+                return
+
+        # Create the basic folders structure
+        os.makedirs(save_dir, exist_ok=True)
         for split in ["train", "valid", "test"]:
-            os.makedirs(f"{self.root_dir}/{split}", exist_ok=True)
+            os.makedirs(f"{save_dir}/{split}", exist_ok=True)
 
         def export(ds, split_name):
             for idx, sample in enumerate(tqdm(ds, total=len(ds))):
@@ -99,15 +130,20 @@ class Dataset:
                 if len(label_formated) == 1 and load_label_other:
                     continue
 
-                # Apply transformation
-                cv2_img = apply_image_transformations(image, image_transform)
+                # Do not apply transformation to RGB images (Better performance)
+                if image_transform == "RGB":
+                    image.save(save_dir / split_name / img_name, quality=95)
 
-                base_name = os.path.splitext(img_name)[0]
-                img_path = os.path.join(self.root_dir, split_name, f"{base_name}.tiff")
-                cv2.imwrite(img_path, cv2_img)
+                else:
+                    # Apply transformation
+                    cv2_img = apply_image_transformations(image, image_transform)
+
+                    base_name = os.path.splitext(img_name)[0]
+                    img_path = save_dir / split_name / f"{base_name}.tiff"
+                    cv2.imwrite(img_path, cv2_img)
 
                 # Save YOLO labels
-                lbl_path = os.path.join(self.root_dir, split_name, txt_name)
+                lbl_path = save_dir / split_name / txt_name
                 with open(lbl_path, "w") as f:
                     if not load_label_other and int(label_formated[0]) == 1:
                         continue  # create an empty label file
@@ -116,7 +152,9 @@ class Dataset:
 
         split_mapping = {"train": "train", "validation": "valid", "test": "test"}
         for hf_split, folder_name in split_mapping.items():
-            export(self.dataset[hf_split], folder_name)
+            export(self._dataset[hf_split], folder_name)
+        with open(marker_path, "w") as f:
+            f.write(current_sha)
 
     def __getitem__(self):
-        return self.dataset
+        return self._dataset
