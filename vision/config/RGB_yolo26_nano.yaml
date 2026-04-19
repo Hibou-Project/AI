@@ -1,7 +1,6 @@
-global:
+model:
   yolo_version: "26"
   model_size: "nano"
-  image_transform: "RGB"
 
 labels:
   load_other: false
@@ -9,12 +8,13 @@ labels:
 dataset:
   hf_name: "Hibou-Foundation/computer-vision"
   hf_revision: "main"
+  image_transform: "RGB"
 
 train:
-  batch_size: 16
+  batch: 16
   epochs: 100
   optimizer: AdamW
-  learning_rate: 0.0001
+  lr0: 0.0001
 
 augmentation:
   degrees: 5
@@ -33,9 +33,6 @@ validation:
 
 reproducibility:
   seed: 42
-
-output:
-  dir: "./runs"
 
 logging:
   use_wandb: false

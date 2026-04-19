@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from dotenv import load_dotenv
+from pathlib import Path
 
 import logging
 import shutil
@@ -27,6 +28,9 @@ class Settings:
     HF_TOKEN: str
     WANDB_API_KEY: str
     HF_DATASET_PATH: str
+    MODEL_DIRECTORY: Path
+    AI_DEVICE: str
+    RUNS_DIRECTORY: Path
 
 
 def parse_list(value: str):
@@ -43,7 +47,10 @@ try:
     SETTINGS = Settings(
         HF_TOKEN=os.getenv("HF_TOKEN"),
         WANDB_API_KEY=os.getenv("WANDB_API_KEY"),
-        HF_DATASET_PATH=os.getenv("HF_DATASET_PATH")
+        HF_DATASET_PATH=os.getenv("HF_DATASET_PATH"),
+        MODEL_DIRECTORY=Path(os.getenv("MODEL_DIRECTORY")),
+        RUNS_DIRECTORY=Path(os.getenv("RUNS_DIRECTORY")),
+        AI_DEVICE=os.getenv("AI_DEVICE"),
     )
 except TypeError as e:
     raise ValueError(f"Invalid value in .env: {e}. Please check the .env file.")

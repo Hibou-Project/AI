@@ -25,3 +25,5 @@ local/*
 vision/datasets
 vision/datasets/
 .env
+vision/runs
+vision/runs/
