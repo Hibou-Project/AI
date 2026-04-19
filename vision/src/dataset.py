@@ -1,5 +1,5 @@
-from datasets import load_dataset, concatenate_datasets, DatasetDict
 from .utils.image import apply_image_transformations, get_image_channels_from_filter
+from datasets import load_dataset, concatenate_datasets, DatasetDict
 from .utils.label import parse_label
 from huggingface_hub import HfApi
 from pathlib import Path
@@ -12,13 +12,23 @@ import os
 
 class Dataset:
 
-    def __init__(self, hf_url: str = None, path: str = None, hf_revision: str = "main", save_dir: str = None, ):
+    def __init__(
+        self,
+        hf_url: str = None,
+        path: str = None,
+        hf_revision: str = "main",
+        save_dir: str = None,
+        image_transform: str = "RGB",
+        load_label_other: bool = False,
+    ):
         self._dataset = None
         self._hf_url = hf_url
         self._path = path
         self._hf_revision = hf_revision
         self._root_dir = None
         self._dataset_full_path = None  # Used only for online datasets
+        self.image_transform = image_transform
+        self.load_label_other = load_label_other
 
         if self._hf_url is not None and self._path is not None:
             raise RuntimeError("Only one of hf_url or path can be specified.")
@@ -90,7 +100,7 @@ class Dataset:
             "test": test_ds,
         })
 
-    def export_to_yolo(self, image_transform, load_label_other: bool):
+    def export_to_yolo(self):
         if self._dataset is None:
             raise RuntimeError("Dataset not loaded.")
         if self._root_dir is None:
@@ -100,11 +110,12 @@ class Dataset:
             print("Skipping export. Dataset is not online.")
             return
 
-        self._dataset_full_path = self._name + "_" + image_transform
+        self._dataset_full_path = self._name + "_" + self.image_transform
         save_dir = Path(self._root_dir, self._dataset_full_path)
 
         current_sha = self._get_dataset_sha()
         marker_path = self._get_export_marker_path()
+
         if os.path.exists(marker_path):
             with open(marker_path, "r") as f:
                 saved_sha = f.read().strip()
@@ -128,17 +139,15 @@ class Dataset:
 
                 label_formated = parse_label(label)
 
-                # Skip empty labels if required
-                if len(label_formated) == 1 and load_label_other:
+                if len(label_formated) == 1 and self.load_label_other:
                     continue
 
                 # Do not apply transformation to RGB images (Better performance)
-                if image_transform == "RGB":
+                if self.image_transform == "RGB":
                     image.save(save_dir / split_name / img_name, quality=95)
-
                 else:
                     # Apply transformation
-                    cv2_img = apply_image_transformations(image, image_transform)
+                    cv2_img = apply_image_transformations(image, self.image_transform)
 
                     base_name = os.path.splitext(img_name)[0]
                     img_path = save_dir / split_name / f"{base_name}.tiff"
@@ -147,7 +156,7 @@ class Dataset:
                 # Save YOLO labels
                 lbl_path = save_dir / split_name / txt_name
                 with open(lbl_path, "w") as file:
-                    if not load_label_other and int(label_formated[0]) == 1:
+                    if not self.load_label_other and int(label_formated[0]) == 1:
                         continue  # create an empty label file
                     else:
                         file.write(label)
@@ -158,19 +167,22 @@ class Dataset:
         with open(marker_path, "w") as f:
             f.write(current_sha)
 
-    def save_dataset_settings(self, load_label_other: bool, image_transform: str):
+    def save_dataset_settings(self):
         path = self._dataset_full_path if self._is_online else self._path
         data_yaml = dict(
             train=f"{path}/train",
             val=f"{path}/valid",
             test=f"{path}/test",
-            nc=2 if load_label_other else 1,
-            channels=get_image_channels_from_filter(image_transform),
-            names=['drone', 'other'] if load_label_other else ['drone'],
+            nc=2 if self.load_label_other else 1,
+            channels=get_image_channels_from_filter(self.image_transform),
+            names=['drone', 'other'] if self.load_label_other else ['drone'],
         )
         data_config_path = Path(self._root_dir, 'data.yaml')
         with open(data_config_path, 'w') as outfile:
             yaml.dump(data_yaml, outfile, default_flow_style=True)
+
+    def get_config_path(self):
+        return Path(self._root_dir, 'data.yaml')
 
     def __getitem__(self):
         return self._dataset
