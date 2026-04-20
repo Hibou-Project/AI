@@ -36,7 +36,8 @@ if __name__ == "__main__":
         selected_version=config["model"]["yolo_version"],
         model_directory=SETTINGS.MODEL_DIRECTORY,
         device=SETTINGS.AI_DEVICE,
-        **config["train"]
+        **config["train"],
+        **config["augmentation"]
     )
 
     model.train(

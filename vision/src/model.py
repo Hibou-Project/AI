@@ -1,11 +1,11 @@
-from vision.src.utils.common import get_device
+from src.utils.common import get_device
 from ultralytics import YOLO
 from pathlib import Path
 import uuid
 
 
 class Model:
-    DEFAULT_TRAIN_CONFIG = {
+    DEFAULT_CONFIG = {
         'epochs': 200,
         'imgsz': 640,
         'batch': 16,
@@ -38,14 +38,14 @@ class Model:
     }
 
     def __init__(self, runs_directory: Path, selected_size, selected_version, model_directory, device="auto", **kwargs):
-        self.train_config = self.DEFAULT_TRAIN_CONFIG.copy()
-        self.train_config["device"] = get_device() if device == "auto" else device
+        self.config = self.DEFAULT_CONFIG.copy()
+        self.config["device"] = get_device() if device == "auto" else device
 
         # validate + update config
         for k, v in kwargs.items():
-            if k not in self.train_config:
+            if k not in self.config:
                 raise ValueError(f"Unknown training parameter: {k}")
-            self.train_config[k] = v
+            self.config[k] = v
 
         if selected_size not in self.YOLO_MODEL_SIZE:
             raise ValueError(f"Invalid size '{selected_size}'")
@@ -66,11 +66,18 @@ class Model:
             project_dir = Path(__file__).resolve().parents[2]
             self._runs_directory = Path(project_dir, self._runs_directory)
         self._model.train(
-            **self.train_config,
+            **self.config,
             project=self._runs_directory,
             data=dataset_config_path,
             name=f"train_{self.run_name}"
         )
+
+    def load_model(self, model_path: Path):
+        self._model = YOLO(model_path, task="detect")
+
+    def validate(self, dataset_config_path: Path):
+        metrics = self._model.val(**self.config, data=dataset_config_path, name=run_name)
+
 
     def _create_run_name(self, version, size):
         session_id = uuid.uuid4().hex[:6]

@@ -23,7 +23,7 @@ augmentation:
   mosaic: 0.3
   close_mosaic: 50
   cutmix: 0.3
-  flip_lr: 0.3
+  fliplr: 0.3
   shear: 5
 
 validation:
