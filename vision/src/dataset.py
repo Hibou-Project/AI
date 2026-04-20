@@ -2,6 +2,7 @@ from .utils.image import apply_image_transformations, get_image_channels_from_fi
 from datasets import load_dataset, concatenate_datasets, DatasetDict
 from .utils.label import parse_label
 from huggingface_hub import HfApi
+from logger import CustomLogger
 from pathlib import Path
 from tqdm import tqdm
 
@@ -9,6 +10,7 @@ import yaml
 import cv2
 import os
 
+logger = CustomLogger("Dataset").get_logger()
 
 class Dataset:
 
@@ -107,7 +109,7 @@ class Dataset:
             raise RuntimeError("Save dataset directory not set.")
 
         if not self._is_online:
-            print("Skipping export. Dataset is not online.")
+            logger.info("Skipping export. Dataset is not online.")
             return
 
         self._dataset_full_path = self._name + "_" + self.image_transform
@@ -120,9 +122,9 @@ class Dataset:
             with open(marker_path, "r") as f:
                 saved_sha = f.read().strip()
             if saved_sha == current_sha and not save_dir.exists():
-                print("Dataset already exported, but files do not exist. Re-exporting.")
+                logger.warning("Dataset already exported, but files do not exist. Re-exporting.")
             elif saved_sha == current_sha:
-                print("Dataset already exported. Skipping.")
+                logger.info("Dataset already exported. Skipping")
                 return
 
         # Create the basic folders structure

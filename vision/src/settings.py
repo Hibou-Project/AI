@@ -32,6 +32,8 @@ class Settings:
     AI_DEVICE: str
     RUNS_DIRECTORY: Path
 
+    LOG_LEVEL: str
+
 
 def parse_list(value: str):
     """Split a comma-separated string and strip whitespace."""
@@ -51,6 +53,7 @@ try:
         MODEL_DIRECTORY=Path(os.getenv("MODEL_DIRECTORY")),
         RUNS_DIRECTORY=Path(os.getenv("RUNS_DIRECTORY")),
         AI_DEVICE=os.getenv("AI_DEVICE"),
+        LOG_LEVEL=os.getenv("LOG_LEVEL"),
     )
 except TypeError as e:
     raise ValueError(f"Invalid value in .env: {e}. Please check the .env file.")
