@@ -1,5 +1,5 @@
+from src.utils.image import plot_image_grid
 from src.utils.common import get_device
-from utils.image import plot_image_grid
 from ultralytics import YOLO
 from pathlib import Path
 from PIL import Image
