@@ -1,9 +1,11 @@
 from src.utils.image import plot_image_grid
 from src.utils.common import get_device
-from ultralytics import YOLO
+from ultralytics import YOLO, settings
+from settings import SETTINGS
 from pathlib import Path
 from PIL import Image
 
+import wandb
 import uuid
 
 
@@ -72,7 +74,7 @@ class Model:
             if not model_path.exists():
                 raise FileNotFoundError(model_path)
 
-            self.run_name = self._create_run_name(selected_version, selected_size)
+            self.run_name = "train_" + self._create_run_name(selected_version, selected_size)
 
         elif mode == "validate":
             self.config = self.DEFAULT_VAL_CONFIG.copy()
@@ -98,6 +100,16 @@ class Model:
 
         self._model = YOLO(model_path, task="detect")
 
+        if SETTINGS.LOG_WANDB_ENABLE:
+            settings.update({"wandb": True})
+            wandb.login(key=SETTINGS.WANDB_API_KEY)
+            wandb.init(
+                project="yolo-drone-detection",
+                reinit=True,
+                name=self.run_name,
+                resume="allow"
+            )
+
     def train(self, dataset_config_path: Path):
         if self._mode != "train":
             raise ValueError("Model is not in train mode")
@@ -105,7 +117,7 @@ class Model:
             **self.config,
             project=self._runs_directory,
             data=dataset_config_path,
-            name=f"train_{self.run_name}"
+            name=f"{self.run_name}"
         )
 
     def load_model(self, model_path: Path):
@@ -122,6 +134,22 @@ class Model:
             data=dataset_config_path,
             name=self.run_name)
 
+        f1_curve = self._val_metrics.box.f1_curve[0]
+        conf_curve = self._val_metrics.box.px
+        best_idx = f1_curve.argmax()
+
+        if SETTINGS.LOG_WANDB_ENABLE:
+            wandb.log({
+                "model_name": self.run_name,
+                "map50_95": self._val_metrics.box.map,
+                "map50": self._val_metrics.box.map50,
+                "precision": self._val_metrics.box.mp,
+                "recall": self._val_metrics.box.mr,
+                "best_f1": f1_curve[best_idx],
+                "best_conf": conf_curve[best_idx],
+            })
+            wandb.finish()
+
     def get_val_metrics(self):
         return self._val_metrics
 
@@ -134,12 +162,7 @@ class Model:
             raise ValueError(f"Model is not in {mode} mode")
 
         # Set result directory based on mode
-        if mode == "train":
-            result_dir = self._runs_directory / f"train_{self.run_name}"
-        elif mode == "validate":
-            result_dir = self._runs_directory / self.run_name
-        else:
-            raise ValueError(f"Unsupported mode: {mode}")
+        result_dir = self._runs_directory / self.run_name
 
         if mode == "train":
             # Show results.png (common for both)
