@@ -1,4 +1,8 @@
+from matplotlib import pyplot as plt
+from PIL import Image
+
 import numpy as np
+import math
 import cv2
 
 
@@ -69,3 +73,30 @@ def get_image_channels_from_filter(filter_name) -> int | None:
             return 1
         case _:
             return None
+
+def plot_image_grid(images_path, nb_cols=4, max_images_preview=-1, show_title=False):
+    if max_images_preview != -1:
+        images_path = images_path[:max_images_preview]
+
+    rows = math.ceil(len(images_path) / nb_cols)
+
+    img = Image.open(images_path[0])
+    w, h = img.size  # pixels
+
+    dpi = 100
+
+    img_w = w / dpi
+    img_h = h / dpi
+    #
+    plt.figure(figsize=(nb_cols * img_w, rows * img_h))
+
+    for i, path in enumerate(images_path):
+        img = Image.open(path)
+        plt.subplot(rows, nb_cols, i + 1)
+        plt.imshow(img)
+        plt.axis("off")
+        if show_title:
+            plt.title(path.name, fontsize=25)
+
+    plt.tight_layout()
+    plt.show()

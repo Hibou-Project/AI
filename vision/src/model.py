@@ -1,7 +1,12 @@
+from IPython.display import display, Image as IPyImage
 from src.utils.common import get_device
 from ultralytics import YOLO
 from pathlib import Path
+from PIL import Image
+
 import uuid
+
+from utils.image import plot_image_grid
 
 
 class Model:
@@ -76,8 +81,48 @@ class Model:
         self._model = YOLO(model_path, task="detect")
 
     def validate(self, dataset_config_path: Path):
-        metrics = self._model.val(**self.config, data=dataset_config_path, name=run_name)
+        pass
+        # metrics = self._model.val(**self.config, data=dataset_config_path, name=self.run_name)
 
+    def get_config(self):
+        return self.config
+
+    def show_trained_results(self):
+        # Show results.png
+        result_dir = self._runs_directory / ("train_" + self.run_name)
+        image_path = result_dir / "results.png"
+
+        img = Image.open(image_path)
+        img.show()
+
+        # Show other results
+        val_batch = []
+        i = 0
+        batch_file = result_dir / f"val_batch{i}_labels.jpg"
+        while batch_file.exists():
+            val_batch.append(batch_file)
+            val_batch.append(result_dir / f"val_batch{i}_pred.jpg")
+            i += 1
+            batch_file = result_dir / f"val_batch{i}_labels.jpg"
+
+        # Retrieve confusion matrix images
+        confusion_matrix_path = [
+            result_dir / "confusion_matrix.png",
+            result_dir / "confusion_matrix_normalized.png"
+        ]
+
+        # Retrieve metric images
+        boxes_path = [
+            result_dir / "BoxF1_curve.png",
+            result_dir / "BoxP_curve.png",
+            result_dir / "BoxPR_curve.png",
+            result_dir / "BoxR_curve.png",
+        ]
+
+        # Show images
+        plot_image_grid(val_batch, nb_cols=2, show_title=True)
+        plot_image_grid(confusion_matrix_path, nb_cols=2)
+        plot_image_grid(boxes_path, nb_cols=2)
 
     def _create_run_name(self, version, size):
         session_id = uuid.uuid4().hex[:6]

@@ -1,5 +1,5 @@
+from src.logger import CustomLogger
 from src.settings import SETTINGS
-from logger import CustomLogger
 from src.dataset import Dataset
 from src.arguments import args
 from src.model import Model
@@ -46,6 +46,10 @@ if __name__ == "__main__":
         **config["augmentation"]
     )
 
+    logger.info("Model config: %s", model.get_config())
     model.train(
         dataset_config_path=dataset.get_config_path()
     )
+
+    if not args.quiet:
+        model.show_trained_results()

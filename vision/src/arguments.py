@@ -15,4 +15,10 @@ parser.add_argument(
     help="Path to YAML configuration file"
 )
 
+parser.add_argument(
+    "-q", "--quiet",
+    action="store_true",
+    help="Suppress output",
+)
+
 args = parser.parse_args()
