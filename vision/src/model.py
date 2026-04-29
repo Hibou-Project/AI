@@ -50,8 +50,8 @@ class Model:
             self,
             runs_directory: Path,
             model_directory,
-            selected_size = None,
-            selected_version = None,
+            selected_size=None,
+            selected_version=None,
             device="auto",
             mode: str = "train",
             model_validation_name: str = None,
@@ -128,17 +128,26 @@ class Model:
     def get_config(self):
         return self.config
 
-    def show_trained_results(self):
-        if self._mode != "train":
-            raise ValueError("Model is not in train mode")
-        # Show results.png
-        result_dir = self._runs_directory / ("train_" + self.run_name)
-        image_path = result_dir / "results.png"
+    def show_results(self, mode: str):
+        # Ensure the mode is correct
+        if self._mode != mode:
+            raise ValueError(f"Model is not in {mode} mode")
 
-        img = Image.open(image_path)
-        img.show()
+        # Set result directory based on mode
+        if mode == "train":
+            result_dir = self._runs_directory / f"train_{self.run_name}"
+        elif mode == "validate":
+            result_dir = self._runs_directory / self.run_name
+        else:
+            raise ValueError(f"Unsupported mode: {mode}")
 
-        # Show other results
+        if mode == "train":
+            # Show results.png (common for both)
+            image_path = result_dir / "results.png"
+            img = Image.open(image_path)
+            img.show()
+
+        # Process validation batches (common for both)
         val_batch = []
         i = 0
         batch_file = result_dir / f"val_batch{i}_labels.jpg"
@@ -148,13 +157,12 @@ class Model:
             i += 1
             batch_file = result_dir / f"val_batch{i}_labels.jpg"
 
-        # Retrieve confusion matrix images
+        # Retrieve confusion matrix and metric images (common for both)
         confusion_matrix_path = [
             result_dir / "confusion_matrix.png",
             result_dir / "confusion_matrix_normalized.png"
         ]
 
-        # Retrieve metric images
         boxes_path = [
             result_dir / "BoxF1_curve.png",
             result_dir / "BoxP_curve.png",
@@ -167,39 +175,11 @@ class Model:
         plot_image_grid(confusion_matrix_path, nb_cols=2)
         plot_image_grid(boxes_path, nb_cols=2)
 
+    def show_trained_results(self):
+        self.show_results("train")
 
     def show_validation_results(self):
-        if self._mode != "validate":
-            raise ValueError("Model is not in validate mode")
-        result_dir_val = self._runs_directory / (self.run_name)
-
-        val_batch = []
-        i = 0
-        batch_file = result_dir_val / f"val_batch{i}_labels.jpg"
-        while batch_file.exists():
-            val_batch.append(batch_file)
-            val_batch.append(result_dir_val / f"val_batch{i}_pred.jpg")
-            i += 1
-            batch_file = result_dir_val / f"val_batch{i}_labels.jpg"
-
-        # Retrieve confusion matrix images
-        confusion_matrix_path = [
-            result_dir_val / "confusion_matrix.png",
-            result_dir_val / "confusion_matrix_normalized.png"
-        ]
-
-        # Retrieve metric images
-        boxes_path = [
-            result_dir_val / "BoxF1_curve.png",
-            result_dir_val / "BoxP_curve.png",
-            result_dir_val / "BoxPR_curve.png",
-            result_dir_val / "BoxR_curve.png",
-        ]
-
-        # Show images
-        plot_image_grid(val_batch, nb_cols=2, show_title=True)
-        plot_image_grid(confusion_matrix_path, nb_cols=2)
-        plot_image_grid(boxes_path, nb_cols=2)
+        self.show_results("validate")
 
     def _create_run_name(self, version, size):
         session_id = uuid.uuid4().hex[:6]
