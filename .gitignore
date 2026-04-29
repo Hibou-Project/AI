@@ -27,3 +27,4 @@ vision/datasets/
 .env
 vision/runs
 vision/runs/
+*.onnx
