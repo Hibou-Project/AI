@@ -1,8 +1,8 @@
 from .utils.image import apply_image_transformations, get_image_channels_from_filter
 from datasets import load_dataset, concatenate_datasets, DatasetDict
 from .utils.label import parse_label
+from src. logger import CustomLogger
 from huggingface_hub import HfApi
-from logger import CustomLogger
 from pathlib import Path
 from tqdm import tqdm
 

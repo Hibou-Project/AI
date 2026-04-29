@@ -361,7 +361,7 @@ wheels = [
 
 [[package]]
 name = "datasets"
-version = "4.8.4"
+version = "4.8.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dill" },
@@ -379,9 +379,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "xxhash" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/22/22/73e46ac7a8c25e7ef0b3bd6f10da3465021d90219a32eb0b4d2afea4c56e/datasets-4.8.4.tar.gz", hash = "sha256:a1429ed853275ce7943a01c6d2e25475b4501eb758934362106a280470df3a52", size = 604382, upload-time = "2026-03-23T14:21:17.987Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/34/14cd8e76f907f7d4dca2334cfeec9f81d30fd15c25a015f99aaea694eaed/datasets-4.8.5.tar.gz", hash = "sha256:0f0c1c3d56ffff2c93b2f4c63c95bac94f3d7e8621aea2a2a576275233bba772", size = 605649, upload-time = "2026-04-27T15:43:57.384Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/e5/247d094108e42ac26363ab8dc57f168840cf7c05774b40ffeb0d78868fcc/datasets-4.8.4-py3-none-any.whl", hash = "sha256:cdc8bee4698e549d78bf1fed6aea2eebc760b22b084f07e6fc020c6577a6ce6d", size = 526991, upload-time = "2026-03-23T14:21:15.89Z" },
+    { url = "https://files.pythonhosted.org/packages/65/99/00f3196036501b53032c4b1ab8337a0b978dee832ed276dae3815df4e8b5/datasets-4.8.5-py3-none-any.whl", hash = "sha256:5079900781719c0e063a8efdd2cd95a31ad0c63209178669cd23cf1b926149ff", size = 528973, upload-time = "2026-04-27T15:43:53.702Z" },
 ]
 
 [[package]]
@@ -593,14 +593,14 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "colorlog", specifier = ">=6.10.1" },
-    { name = "datasets", specifier = ">=4.8.4" },
+    { name = "datasets", specifier = ">=4.8.5" },
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "imagecodecs", specifier = ">=2026.3.6" },
     { name = "opencv-python", specifier = ">=4.13.0.92" },
     { name = "pillow", specifier = ">=12.2.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "torch", specifier = ">=2.11.0" },
-    { name = "ultralytics", specifier = ">=8.4.39" },
+    { name = "ultralytics", specifier = ">=8.4.43" },
 ]
 
 [[package]]
@@ -1811,7 +1811,7 @@ wheels = [
 
 [[package]]
 name = "ultralytics"
-version = "8.4.39"
+version = "8.4.43"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "matplotlib" },
@@ -1827,9 +1827,9 @@ dependencies = [
     { name = "torchvision" },
     { name = "ultralytics-thop" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/35/455086f467367654bced21417cf357afbef12b2c4c14b8b21dedf11a722a/ultralytics-8.4.39.tar.gz", hash = "sha256:310c0fb1cde273e1f30b24d7a6c618b02dfcb8a64434f6b8b4528a5f86a3b71d", size = 1035859, upload-time = "2026-04-18T19:12:04.287Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/f1/9df482fe77aedce41202941682c91df209e9b033e42c27f1e6113e712761/ultralytics-8.4.43.tar.gz", hash = "sha256:174de586b4f2b2a8fab33c57b6aa059ce4408544585e874477ca30835e780a8f", size = 1037739, upload-time = "2026-04-28T16:53:32.246Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/9f/fbcc2843fb37c40459d13171ce55620d24f697b1e2b9d29e94ab8213b603/ultralytics-8.4.39-py3-none-any.whl", hash = "sha256:df7de9425bafd1a193d631fa38daa3140bc3c91ae03c24f91a19279004cdeccb", size = 1227450, upload-time = "2026-04-18T19:12:00.325Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/bf/fdcbb5b21e6d40e9b761217fae6d3e5aa1596c076f4a6016e81d71754387/ultralytics-8.4.43-py3-none-any.whl", hash = "sha256:f2fe87ba6667c85341ea49e23c142bb80e6dfb12f8736917d28b08e6bf5b0e51", size = 1229481, upload-time = "2026-04-28T16:53:27.481Z" },
 ]
 
 [[package]]
