@@ -8,7 +8,7 @@ import uuid
 
 
 class Model:
-    DEFAULT_CONFIG = {
+    DEFAULT_TRAIN_CONFIG = {
         'epochs': 200,
         'imgsz': 640,
         'batch': 16,
@@ -32,6 +32,12 @@ class Model:
         'cutmix': 0.3,
     }
 
+    DEFAULT_VAL_CONFIG = {
+        "visualize": True,
+        "save": True,
+        "split": "test"
+    }
+
     YOLO_MODEL_SIZE = {
         "nano": "n",
         "small": "s",
@@ -40,8 +46,48 @@ class Model:
         "xlarge": "x",
     }
 
-    def __init__(self, runs_directory: Path, selected_size, selected_version, model_directory, device="auto", **kwargs):
-        self.config = self.DEFAULT_CONFIG.copy()
+    def __init__(
+            self,
+            runs_directory: Path,
+            model_directory,
+            selected_size = None,
+            selected_version = None,
+            device="auto",
+            mode: str = "train",
+            model_validation_name: str = None,
+            **kwargs):
+
+        self._mode = mode
+        self._val_metrics = None
+
+        if mode == "train":
+            self.config = self.DEFAULT_TRAIN_CONFIG.copy()
+
+            if selected_size not in self.YOLO_MODEL_SIZE:
+                raise ValueError(f"Invalid size '{selected_size}'")
+
+            model_name = f"yolo{selected_version}{self.YOLO_MODEL_SIZE[selected_size]}.pt"
+            model_path = model_directory / model_name
+
+            if not model_path.exists():
+                raise FileNotFoundError(model_path)
+
+            self.run_name = self._create_run_name(selected_version, selected_size)
+
+        elif mode == "validate":
+            self.config = self.DEFAULT_VAL_CONFIG.copy()
+            model_path = model_directory / model_validation_name
+            self.run_name = "val_yolo" + model_validation_name.split(".")[0]
+
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+
+        self._runs_directory = runs_directory
+        self._runs_directory.is_absolute()
+        if not self._runs_directory.is_absolute():
+            project_dir = Path(__file__).resolve().parents[2]
+            self._runs_directory = Path(project_dir, self._runs_directory)
+
         self.config["device"] = get_device() if device == "auto" else device
 
         # validate + update config
@@ -50,24 +96,11 @@ class Model:
                 raise ValueError(f"Unknown training parameter: {k}")
             self.config[k] = v
 
-        if selected_size not in self.YOLO_MODEL_SIZE:
-            raise ValueError(f"Invalid size '{selected_size}'")
-
-        model_name = f"yolo{selected_version}{self.YOLO_MODEL_SIZE[selected_size]}.pt"
-        model_path = model_directory / model_name
-
-        if not model_path.exists():
-            raise FileNotFoundError(model_path)
-
         self._model = YOLO(model_path, task="detect")
-        self.run_name = self._create_run_name(selected_version, selected_size)
-        self._runs_directory = runs_directory
 
     def train(self, dataset_config_path: Path):
-        self._runs_directory.is_absolute()
-        if not self._runs_directory.is_absolute():
-            project_dir = Path(__file__).resolve().parents[2]
-            self._runs_directory = Path(project_dir, self._runs_directory)
+        if self._mode != "train":
+            raise ValueError("Model is not in train mode")
         self._model.train(
             **self.config,
             project=self._runs_directory,
@@ -79,13 +112,25 @@ class Model:
         self._model = YOLO(model_path, task="detect")
 
     def validate(self, dataset_config_path: Path):
-        pass
-        # metrics = self._model.val(**self.config, data=dataset_config_path, name=self.run_name)
+        if self._mode != "validate":
+            raise ValueError("Model is not in validate mode")
+        if Path(self._runs_directory / self.run_name).exists():
+            raise FileExistsError(f"Run {self.run_name} already exists, please delete it first.")
+        self._val_metrics = self._model.val(
+            **self.config,
+            project=self._runs_directory,
+            data=dataset_config_path,
+            name=self.run_name)
+
+    def get_val_metrics(self):
+        return self._val_metrics
 
     def get_config(self):
         return self.config
 
     def show_trained_results(self):
+        if self._mode != "train":
+            raise ValueError("Model is not in train mode")
         # Show results.png
         result_dir = self._runs_directory / ("train_" + self.run_name)
         image_path = result_dir / "results.png"
@@ -115,6 +160,40 @@ class Model:
             result_dir / "BoxP_curve.png",
             result_dir / "BoxPR_curve.png",
             result_dir / "BoxR_curve.png",
+        ]
+
+        # Show images
+        plot_image_grid(val_batch, nb_cols=2, show_title=True)
+        plot_image_grid(confusion_matrix_path, nb_cols=2)
+        plot_image_grid(boxes_path, nb_cols=2)
+
+
+    def show_validation_results(self):
+        if self._mode != "validate":
+            raise ValueError("Model is not in validate mode")
+        result_dir_val = self._runs_directory / (self.run_name)
+
+        val_batch = []
+        i = 0
+        batch_file = result_dir_val / f"val_batch{i}_labels.jpg"
+        while batch_file.exists():
+            val_batch.append(batch_file)
+            val_batch.append(result_dir_val / f"val_batch{i}_pred.jpg")
+            i += 1
+            batch_file = result_dir_val / f"val_batch{i}_labels.jpg"
+
+        # Retrieve confusion matrix images
+        confusion_matrix_path = [
+            result_dir_val / "confusion_matrix.png",
+            result_dir_val / "confusion_matrix_normalized.png"
+        ]
+
+        # Retrieve metric images
+        boxes_path = [
+            result_dir_val / "BoxF1_curve.png",
+            result_dir_val / "BoxP_curve.png",
+            result_dir_val / "BoxPR_curve.png",
+            result_dir_val / "BoxR_curve.png",
         ]
 
         # Show images

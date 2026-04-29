@@ -16,6 +16,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--model-name",
+    type=str,
+    required=False,
+    help="Give a specific mode name for validation"
+)
+
+parser.add_argument(
     "-q", "--quiet",
     action="store_true",
     help="Suppress output",
