@@ -35,6 +35,8 @@ class Settings:
     LOG_LEVEL: str
     LOG_WANDB_ENABLE: bool
 
+    DB_FILE: str
+
 
 def parse_list(value: str):
     """Split a comma-separated string and strip whitespace."""
@@ -56,6 +58,7 @@ try:
         AI_DEVICE=os.getenv("AI_DEVICE"),
         LOG_LEVEL=os.getenv("LOG_LEVEL"),
         LOG_WANDB_ENABLE=parse_bool(os.getenv("LOG_WANDB_ENABLE", "False")),
+        DB_FILE=os.getenv("DB_FILE"),
     )
 except TypeError as e:
     raise ValueError(f"Invalid value in .env: {e}. Please check the .env file.")

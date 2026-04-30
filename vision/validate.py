@@ -44,7 +44,8 @@ if __name__ == "__main__":
         device=SETTINGS.AI_DEVICE,
         model_directory=SETTINGS.MODEL_DIRECTORY,
         mode="validate",
-        model_validation_name=args.model_name,
+        model_name=args.model_name,
+        uploads_metrics=SETTINGS.LOG_WANDB_ENABLE,
         **config["validation"],
     )
 

@@ -1,7 +1,7 @@
 from src.settings import SETTINGS
 
-import logging
 import colorlog
+import logging
 
 
 def _get_log_level():
@@ -55,6 +55,7 @@ def update_global_log_level() -> None:
     """Update the log level of all app loggers and their handlers from SETTINGS.LOG_LEVEL."""
     level = _get_log_level()
     suppressed = {
+        # "ultralytics"
     }
     # Update root logger
     logging.root.setLevel(level)
@@ -79,4 +80,4 @@ def blank_line_module(log_level="DEBUG", how_many_lines=1):
 
 
 # external logger
-# logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+# logging.getLogger("ultralytics").setLevel(logging.CRITICAL)

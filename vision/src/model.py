@@ -1,9 +1,17 @@
+import os
+
+import torch
+from ultralytics.utils.torch_utils import get_cpu_info, get_gpu_info
+import ultralytics
+from ultralytics.utils.checks import collect_system_info, check_yolo
+from ultralytics.utils.torch_utils import select_device
+from ultralytics import YOLO, settings, checks
 from src.utils.image import plot_image_grid
 from src.utils.common import get_device
-from ultralytics import YOLO, settings
 from settings import SETTINGS
 from pathlib import Path
 from PIL import Image
+from ultralytics.utils.autodevice import GPUInfo
 
 import wandb
 import uuid
@@ -40,6 +48,14 @@ class Model:
         "split": "test"
     }
 
+    DEFAULT_BENCHMARK_CONFIG = {
+        "imgsz": 640,
+        "half": False,
+        "int8": False,
+        "split": "test",
+        "save_json": True
+    }
+
     YOLO_MODEL_SIZE = {
         "nano": "n",
         "small": "s",
@@ -56,11 +72,16 @@ class Model:
             selected_version=None,
             device="auto",
             mode: str = "train",
-            model_validation_name: str = None,
+            model_name: str = None,
+            uploads_metrics: bool = False,
             **kwargs):
 
         self._mode = mode
         self._val_metrics = None
+        self._benchmark_metrics = None
+        self._uploads_metrics = uploads_metrics
+
+        print(ultralytics.checks())
 
         if mode == "train":
             self.config = self.DEFAULT_TRAIN_CONFIG.copy()
@@ -78,8 +99,13 @@ class Model:
 
         elif mode == "validate":
             self.config = self.DEFAULT_VAL_CONFIG.copy()
-            model_path = model_directory / model_validation_name
-            self.run_name = "val_yolo" + model_validation_name.split(".")[0]
+            model_path = model_directory / model_name
+            self.run_name = "val_yolo" + model_name.split(".")[0]
+
+        elif mode == "benchmark":
+            self.config = self.DEFAULT_BENCHMARK_CONFIG.copy()
+            model_path = model_directory / model_name
+            self.run_name = "benchmark_yolo" + model_name.split(".")[0]
 
         else:
             raise ValueError(f"Invalid mode: {mode}")
@@ -100,7 +126,7 @@ class Model:
 
         self._model = YOLO(model_path, task="detect")
 
-        if SETTINGS.LOG_WANDB_ENABLE:
+        if self._uploads_metrics:
             settings.update({"wandb": True})
             wandb.login(key=SETTINGS.WANDB_API_KEY)
             wandb.init(
@@ -123,32 +149,36 @@ class Model:
     def load_model(self, model_path: Path):
         self._model = YOLO(model_path, task="detect")
 
-    def validate(self, dataset_config_path: Path):
-        if self._mode != "validate":
-            raise ValueError("Model is not in validate mode")
-        if Path(self._runs_directory / self.run_name).exists():
-            raise FileExistsError(f"Run {self.run_name} already exists, please delete it first.")
-        self._val_metrics = self._model.val(
-            **self.config,
-            project=self._runs_directory,
-            data=dataset_config_path,
-            name=self.run_name)
+    def validate(self, dataset_config_path: Path, model_format=""):
+        if self._mode == "validate" or self._mode == "benchmark":
+            model_format_str = "pytorch" if model_format == "" else model_format
+            full_run_name = self.run_name + f"_{model_format_str}"
+            if Path(self._runs_directory / full_run_name).exists():
+                raise FileExistsError(f"Run {full_run_name} already exists, please delete it first.")
+            self._val_metrics = self._model.val(
+                **self.config,
+                project=self._runs_directory,
+                data=dataset_config_path,
+                format=model_format,
+                name=full_run_name
+            )
 
-        f1_curve = self._val_metrics.box.f1_curve[0]
-        conf_curve = self._val_metrics.box.px
-        best_idx = f1_curve.argmax()
-
-        if SETTINGS.LOG_WANDB_ENABLE:
-            wandb.log({
-                "model_name": self.run_name,
-                "map50_95": self._val_metrics.box.map,
-                "map50": self._val_metrics.box.map50,
-                "precision": self._val_metrics.box.mp,
-                "recall": self._val_metrics.box.mr,
-                "best_f1": f1_curve[best_idx],
-                "best_conf": conf_curve[best_idx],
-            })
-            wandb.finish()
+            if self._uploads_metrics:
+                f1_curve = self._val_metrics.box.f1_curve[0]
+                conf_curve = self._val_metrics.box.px
+                best_idx = f1_curve.argmax()
+                wandb.log({
+                    "model_name": self.run_name,
+                    "map50_95": self._val_metrics.box.map,
+                    "map50": self._val_metrics.box.map50,
+                    "precision": self._val_metrics.box.mp,
+                    "recall": self._val_metrics.box.mr,
+                    "best_f1": f1_curve[best_idx],
+                    "best_conf": conf_curve[best_idx],
+                })
+                wandb.finish()
+        else:
+            raise ValueError("Model is not in validate or benchmark mode")
 
     def get_val_metrics(self):
         return self._val_metrics
@@ -161,7 +191,7 @@ class Model:
         if self._mode != mode:
             raise ValueError(f"Model is not in {mode} mode")
 
-        # Set result directory based on mode
+        # Set the result directory based on the mode
         result_dir = self._runs_directory / self.run_name
 
         if mode == "train":
@@ -207,3 +237,24 @@ class Model:
     def _create_run_name(self, version, size):
         session_id = uuid.uuid4().hex[:6]
         return f"yolo{version}-{size}-{session_id}"
+
+    def get_selected_device(self):
+
+        if self.config["device"] == "cpu":
+            is_cuda = False
+        elif self.config["device"] == "cuda":
+            is_cuda = True
+        elif isinstance(self.config["device"], list):
+            is_cuda = True
+        else:
+            raise ValueError(f"Invalid device: {self.config['device']}")
+
+        info_dict = {
+            "cpu": get_cpu_info(),
+            "cpu_count": os.cpu_count(),
+            "gpu": get_gpu_info(index=0) if is_cuda else None,
+            "gpu_count": torch.cuda.device_count() if is_cuda else None,
+        }
+
+        return info_dict["gpu"] if is_cuda else info_dict["cpu"]
+
