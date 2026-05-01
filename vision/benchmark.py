@@ -1,9 +1,10 @@
-from utils.db import create_engine_and_session_factory, sqlite_add_missing_columns
-from src.logger import CustomLogger, update_global_log_level
+from src.logger import CustomLogger
 from src.settings import SETTINGS
 from src.dataset import Dataset
 from src.arguments import args
-from models.base import Base
+from sqlalchemy import select
+from utils.db import Database
+from models import Hardware, Format
 from src.model import Model
 
 import asyncio
@@ -12,31 +13,16 @@ import yaml
 logger = CustomLogger("benchmark").get_logger()
 
 
-async def init_db():
-    logger.info(f"Initializing database at {SETTINGS.DB_FILE}")
-    engine, session_factory = create_engine_and_session_factory(
-        "sqlite+aiosqlite:///" + SETTINGS.DB_FILE
-    )
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-        await connection.run_sync(sqlite_add_missing_columns)
-    await engine.dispose()
+async def main():
+    # Initialize DB
+    await Database.init_db()
 
+    is_half = config["benchmark"]["half"]
+    is_int8 = config["benchmark"]["int8"]
+    if is_half and is_int8:
+        raise ValueError("Cannot use half and int8 precision at the same time. Edit the config file and set one of them to False.")
 
-if __name__ == "__main__":
-    #  Check arguments
-    if not args.config.exists():
-        raise ValueError(f"Config file {args.config} does not exist.")
-
-    if not args.model_name:
-        raise ValueError("Please provide a mode name.")
-
-    # Load YAML config
-    with open(args.config, "r") as f:
-        config = yaml.safe_load(f)
-
-    asyncio.run(init_db())
-
+    # Load dataset
     dataset = Dataset(
         hf_url=config["dataset"]["hf_name"],
         save_dir=SETTINGS.HF_DATASET_PATH,
@@ -51,11 +37,9 @@ if __name__ == "__main__":
     )
     logger.info("Exporting dataset to YOLO format.")
     dataset.export_to_yolo()
-
-    logger.info("Saving dataset settings.")
     dataset.save_dataset_settings()
 
-    logger.info("Starting validaton.")
+    # Load model
     model = Model(
         runs_directory=SETTINGS.RUNS_DIRECTORY,
         device=SETTINGS.AI_DEVICE,
@@ -65,11 +49,10 @@ if __name__ == "__main__":
         **config["benchmark"],
     )
 
+    run_results = []
+
+    # Benchmark per format
     formats = ["", "onnx", "openvino"]
-
-    selected_device = model.get_selected_device()
-    print(f"Selected device: {selected_device}")
-
     for yolo_format in formats:
         print(f"Validating model in {yolo_format} format.")
         model.validate(
@@ -81,10 +64,83 @@ if __name__ == "__main__":
         speed = metrics.speed["inference"]
         fps = round(1000 / (speed + 1e-3), 2)
 
+        model_config = model.get_config()
+
         print(f"Number of images: {number_of_images}")
         print(f"Speed: {speed} ms")
         print(f"Inference time per image: {speed / number_of_images} ms")
         print(f"FPS: {fps}")
 
+        if yolo_format == "":
+            yolo_format = "pytorch"
 
-    logger.info("Model config: %s", model.get_config())
+        results = {
+            "format": yolo_format,
+            "half": model_config["half"],
+            "int8": model_config["int8"],
+            "number_of_images": number_of_images,
+            "speed": speed,
+            "fps": fps,
+            "inference_time_per_image": speed / number_of_images,
+        }
+
+        run_results.append(results)
+
+    print(run_results[0])
+
+
+    db_session = Database.get_session_factory()
+    async with db_session() as session:
+        # Add hardware
+        hardware_type, selected_device = model.get_selected_device()
+        print(f"Selected device: {selected_device}")
+
+        hardware_result = await session.execute(select(Hardware).where(Hardware.name == selected_device))
+        hardware = hardware_result.scalars().first()
+        if hardware:
+            print(f"Hardware {selected_device} already exists in the database.")
+        else:
+            hardware = Hardware(
+                name=selected_device,
+                type=hardware_type
+            )
+            session.add(hardware)
+
+        for result in run_results:
+            # Add model_format
+            # Add precision check
+            formats_result = await session.execute(select(Format).where(Format.name == result["format"]))
+            model_format = formats_result.scalars().first()
+
+            if model_format:
+                print(f"Format {model_format} already exists in the database.")
+            else:
+                if result["half"]:
+                    precision = "fp16"
+                elif result["int8"]:
+                    precision = "int8"
+                else:
+                    precision = "fp32"
+                model_format = Format(
+                    name=result["format"],
+                    precision=precision
+                )
+                session.add(model_format)
+        await session.commit()
+
+
+
+if __name__ == "__main__":
+
+    # Load YAML config first
+    if not args.config.exists():
+        raise ValueError(f"Config file {args.config} does not exist.")
+
+    if not args.model_name:
+        raise ValueError("Please provide a model name.")
+
+    with open(args.config, "r") as f:
+        config = yaml.safe_load(f)
+
+    # Run the async main
+    asyncio.run(main())

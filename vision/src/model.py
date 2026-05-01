@@ -255,6 +255,7 @@ class Model:
             "gpu": get_gpu_info(index=0) if is_cuda else None,
             "gpu_count": torch.cuda.device_count() if is_cuda else None,
         }
-
-        return info_dict["gpu"] if is_cuda else info_dict["cpu"]
+        hardware_type = "GPU" if is_cuda else "CPU"
+        name = info_dict["gpu"] if is_cuda else info_dict["cpu"]
+        return hardware_type, name
 

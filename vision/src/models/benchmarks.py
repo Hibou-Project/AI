@@ -34,4 +34,4 @@ class Benchmark(Base):
 
     model = relationship("Model", backref="benchmarks")
     hardware = relationship("Hardware", backref="benchmarks")
-    format = relationship("Formats", backref="benchmarks")
+    format = relationship("Format", backref="benchmarks")
