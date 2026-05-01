@@ -27,3 +27,7 @@ vision/datasets/
 .env
 vision/runs
 vision/runs/
+models/*
+runs/*
+runs/
+*.db
