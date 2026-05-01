@@ -1,10 +1,11 @@
 from src.logger import CustomLogger
 from src.settings import SETTINGS
 from src.dataset import Dataset
+from src.models import Hardware
 from src.arguments import args
+from src.models import Format
 from sqlalchemy import select
 from utils.db import Database
-from models import Hardware, Format
 from src.model import Model
 
 import asyncio
