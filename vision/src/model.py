@@ -52,6 +52,7 @@ class Model:
         "imgsz": 640,
         "half": False,
         "int8": False,
+        "batch": 1,
         "split": "test",
         "save_json": True
     }
@@ -106,6 +107,7 @@ class Model:
             self.config = self.DEFAULT_BENCHMARK_CONFIG.copy()
             model_path = model_directory / model_name
             self.run_name = "benchmark_yolo" + model_name.split(".")[0]
+            # self._model_extracted_name = self._extract_name(model_name)
 
         else:
             raise ValueError(f"Invalid mode: {mode}")
@@ -237,6 +239,12 @@ class Model:
     def _create_run_name(self, version, size):
         session_id = uuid.uuid4().hex[:6]
         return f"yolo{version}-{size}-{session_id}"
+
+    def get_model_size(self):
+        return self._model.model.yaml.get("scale")
+
+    def get_model_version(self):
+        return self._model.model.yaml.get("format")
 
     def get_selected_device(self):
 

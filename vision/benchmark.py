@@ -1,5 +1,7 @@
+from src.models import Model as DbModel
 from src.logger import CustomLogger
 from src.settings import SETTINGS
+from src.models import Benchmark
 from src.dataset import Dataset
 from src.models import Hardware
 from src.arguments import args
@@ -21,7 +23,8 @@ async def main():
     is_half = config["benchmark"]["half"]
     is_int8 = config["benchmark"]["int8"]
     if is_half and is_int8:
-        raise ValueError("Cannot use half and int8 precision at the same time. Edit the config file and set one of them to False.")
+        raise ValueError(
+            "Cannot use half and int8 precision at the same time. Edit the config file and set one of them to False.")
 
     # Load dataset
     dataset = Dataset(
@@ -61,6 +64,8 @@ async def main():
             dataset_config_path=dataset.get_config_path()
         )
         metrics = model.get_val_metrics()
+
+        mAP50_95 = metrics.box.map
         number_of_images = metrics.nt_per_image[0]
         speed = metrics.speed["inference"]
         fps = round(1000 / (speed + 1e-3), 2)
@@ -81,14 +86,12 @@ async def main():
             "int8": model_config["int8"],
             "number_of_images": number_of_images,
             "speed": speed,
+            "map50_95": mAP50_95,
             "fps": fps,
             "inference_time_per_image": speed / number_of_images,
         }
 
         run_results.append(results)
-
-    print(run_results[0])
-
 
     db_session = Database.get_session_factory()
     async with db_session() as session:
@@ -107,28 +110,65 @@ async def main():
             )
             session.add(hardware)
 
+        # Add model
+        model_result = await session.execute(
+            select(DbModel).where(DbModel.name == args.model_name)
+        )
+        db_model = model_result.scalars().first()
+
+        if db_model:
+            print(f"Model {args.model_name} already exists in the database.")
+        else:
+            db_model = DbModel(
+                name=args.model_name,
+                size=model.get_model_size(),
+                yolo_version=int(config["model"]["yolo_version"]),
+            )
+            session.add(db_model)
+
+        await session.flush()
+        model_id: int = int(db_model.id.__str__())
+        hardware_id: int = int(hardware.id.__str__())
+
         for result in run_results:
             # Add model_format
-            # Add precision check
-            formats_result = await session.execute(select(Format).where(Format.name == result["format"]))
+            if result["half"]:
+                precision = "fp16"
+            elif result["int8"]:
+                precision = "int8"
+            else:
+                precision = "fp32"
+            formats_result = await session.execute(
+                select(Format).where(
+                    (Format.name == result["format"]) &
+                    (Format.precision == precision)
+                )
+            )
             model_format = formats_result.scalars().first()
 
             if model_format:
                 print(f"Format {model_format} already exists in the database.")
             else:
-                if result["half"]:
-                    precision = "fp16"
-                elif result["int8"]:
-                    precision = "int8"
-                else:
-                    precision = "fp32"
                 model_format = Format(
                     name=result["format"],
                     precision=precision
                 )
                 session.add(model_format)
-        await session.commit()
+                await session.flush()
 
+            format_id: int = int(model_format.id.__str__())
+
+            benchmark = Benchmark(
+                model_id=model_id,
+                hardware_id=hardware_id,
+                format_id=format_id,
+                batch_size=config["benchmark"]["batch"],
+                ms_per_image=result["inference_time_per_image"],
+                throughput_fps=result["fps"],
+                map50_95=result["map50_95"],
+            )
+            session.add(benchmark)
+        await session.commit()
 
 
 if __name__ == "__main__":

@@ -10,12 +10,14 @@ dataset:
   hf_revision: "main"
   image_transform: "RGB"
 
+#https://docs.ultralytics.com/modes/train/
 train:
   batch: 16
-  epochs: 100
+  epochs: 1
   optimizer: AdamW
   lr0: 0.0001
 
+#https://docs.ultralytics.com/guides/yolo-data-augmentation/
 augmentation:
   degrees: 5
   perspective: 0.0002
@@ -26,13 +28,17 @@ augmentation:
   fliplr: 0.3
   shear: 5
 
+#https://docs.ultralytics.com/modes/val/
 validation:
   visualize: true
   save: true
   split: test
 
+#https://docs.ultralytics.com/modes/benchmark/
+benchmark:
+  half: false
+  int8: false
+  batch: 1
+
 reproducibility:
   seed: 42
-
-logging:
-  use_wandb: false

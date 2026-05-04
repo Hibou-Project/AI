@@ -21,10 +21,9 @@ class Benchmark(Base):
     format_id: Mapped[int] = mapped_column(ForeignKey("formats.id"), nullable=False)
 
     # Benchmark metrics
-    latency_ms: Mapped[float] = mapped_column(nullable=False)        # ms per image
+    ms_per_image: Mapped[float] = mapped_column(nullable=False)        # ms per image
     throughput_fps: Mapped[float] = mapped_column(nullable=True)     # images per second, optional
     map50_95: Mapped[float] = mapped_column(nullable=True)           # Accuracy metric
-    model_size_mb: Mapped[float] = mapped_column(nullable=True)      # File size
     batch_size: Mapped[int] = mapped_column(default=1)               # Batch size used in benchmark
 
     # Timestamp
