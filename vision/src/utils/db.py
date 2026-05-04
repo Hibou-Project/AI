@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, AsyncSession, create_async_engine
+from sqlalchemy import inspect, text, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.engine import Connection
-from sqlalchemy import inspect, text
-from models.base import Base
 from src.settings import SETTINGS
+from models.base import Base
 
 
 class Database:
@@ -67,3 +68,23 @@ class Database:
                 sync_conn.execute(
                     text(f"ALTER TABLE {table.name} ADD COLUMN {column.name} {coltype}")
                 )
+
+    @classmethod
+    async def get_or_create(cls, session: AsyncSession, model, **kwargs):
+        result = await session.execute(select(model).filter_by(**kwargs))
+        instance = result.scalars().first()
+
+        if instance:
+            return instance
+
+        instance = model(**kwargs)
+        session.add(instance)
+
+        try:
+            await session.flush()  # get ID
+        except IntegrityError:
+            await session.rollback()
+            result = await session.execute(select(model).filter_by(**kwargs))
+            instance = result.scalars().first()
+
+        return instance

@@ -111,53 +111,35 @@ async def main():
             session.add(hardware)
 
         # Add model
-        model_result = await session.execute(
-            select(DbModel).where(DbModel.name == args.model_name)
+        db_model = await Database.get_or_create(
+            session,
+            DbModel,
+            name=args.model_name,
+            size=model.get_model_size(),
+            yolo_version=int(config["model"]["yolo_version"]),
         )
-        db_model = model_result.scalars().first()
 
-        if db_model:
-            print(f"Model {args.model_name} already exists in the database.")
-        else:
-            db_model = DbModel(
-                name=args.model_name,
-                size=model.get_model_size(),
-                yolo_version=int(config["model"]["yolo_version"]),
-            )
-            session.add(db_model)
-
-        await session.flush()
         model_id: int = int(db_model.id.__str__())
         hardware_id: int = int(hardware.id.__str__())
 
         for result in run_results:
             # Add model_format
-            if result["half"]:
-                precision = "fp16"
-            elif result["int8"]:
-                precision = "int8"
-            else:
-                precision = "fp32"
-            formats_result = await session.execute(
-                select(Format).where(
-                    (Format.name == result["format"]) &
-                    (Format.precision == precision)
-                )
+            precision = (
+                "fp16" if result["half"]
+                else "int8" if result["int8"]
+                else "fp32"
             )
-            model_format = formats_result.scalars().first()
 
-            if model_format:
-                print(f"Format {model_format} already exists in the database.")
-            else:
-                model_format = Format(
-                    name=result["format"],
-                    precision=precision
-                )
-                session.add(model_format)
-                await session.flush()
+            model_format = await Database.get_or_create(
+                session,
+                Format,
+                name=result["format"],
+                precision=precision
+            )
 
-            format_id: int = int(model_format.id.__str__())
+            format_id: int = model_format.id
 
+            # Add the final benchmark
             benchmark = Benchmark(
                 model_id=model_id,
                 hardware_id=hardware_id,
