@@ -1,20 +1,16 @@
-import os
-
-import torch
 from ultralytics.utils.torch_utils import get_cpu_info, get_gpu_info
-import ultralytics
-from ultralytics.utils.checks import collect_system_info, check_yolo
-from ultralytics.utils.torch_utils import select_device
-from ultralytics import YOLO, settings, checks
 from src.utils.image import plot_image_grid
 from src.utils.common import get_device
+from ultralytics import YOLO, settings
 from settings import SETTINGS
 from pathlib import Path
 from PIL import Image
-from ultralytics.utils.autodevice import GPUInfo
+import ultralytics
 
+import torch
 import wandb
 import uuid
+import os
 
 
 class Model:
@@ -188,15 +184,21 @@ class Model:
     def get_config(self):
         return self.config
 
-    def show_results(self, mode: str):
+    def show_results(self):
         # Ensure the mode is correct
-        if self._mode != mode:
-            raise ValueError(f"Model is not in {mode} mode")
+        if self._mode != self._mode:
+            raise ValueError(f"Model is not in {self._mode} mode")
+
+        if self._mode == "benchmark":
+            return
 
         # Set the result directory based on the mode
-        result_dir = self._runs_directory / self.run_name
+        if self._mode == "train":
+            result_dir = self._runs_directory / self.run_name
+        else:
+            result_dir = self._runs_directory / str(self.run_name + "_pytorch")
 
-        if mode == "train":
+        if self._mode == "train":
             # Show results.png (common for both)
             image_path = result_dir / "results.png"
             img = Image.open(image_path)
@@ -231,10 +233,10 @@ class Model:
         plot_image_grid(boxes_path, nb_cols=2)
 
     def show_trained_results(self):
-        self.show_results("train")
+        self.show_results()
 
     def show_validation_results(self):
-        self.show_results("validate")
+        self.show_results()
 
     def _create_run_name(self, version, size):
         session_id = uuid.uuid4().hex[:6]
@@ -266,4 +268,3 @@ class Model:
         hardware_type = "GPU" if is_cuda else "CPU"
         name = info_dict["gpu"] if is_cuda else info_dict["cpu"]
         return hardware_type, name
-

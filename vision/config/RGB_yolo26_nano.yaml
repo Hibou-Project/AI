@@ -17,8 +17,8 @@ train:
   optimizer: AdamW
   lr0: 0.0001
 
-#https://docs.ultralytics.com/guides/yolo-data-augmentation/
-augmentation:
+  # Data augmentation parameters
+  # https://docs.ultralytics.com/guides/yolo-data-augmentation/
   degrees: 5
   perspective: 0.0002
   scale: 0.05

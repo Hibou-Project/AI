@@ -44,7 +44,6 @@ if __name__ == "__main__":
         device=SETTINGS.AI_DEVICE,
         mode="train",
         **config["train"],
-        **config["augmentation"]
     )
 
     logger.info("Model config: %s", model.get_config())
