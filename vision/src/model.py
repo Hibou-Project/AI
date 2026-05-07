@@ -2,7 +2,7 @@ from ultralytics.utils.torch_utils import get_cpu_info, get_gpu_info
 from src.utils.image import plot_image_grid
 from src.utils.common import get_device
 from ultralytics import YOLO, settings
-from settings import SETTINGS
+from src.settings import SETTINGS
 from pathlib import Path
 from PIL import Image
 import ultralytics
