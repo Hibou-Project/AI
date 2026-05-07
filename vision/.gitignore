@@ -29,5 +29,5 @@ vision/runs
 vision/runs/
 models/*
 runs/*
-runs/
+runs
 *.db
