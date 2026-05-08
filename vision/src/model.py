@@ -126,7 +126,7 @@ class Model:
 
         if self._uploads_metrics:
             settings.update({"wandb": True})
-            wandb.login(key=SETTINGS.WANDB_API_KEY)
+            wandb.login(key=SETTINGS.TOKEN_WANDB)
             wandb.init(
                 project="yolo-drone-detection",
                 reinit=True,

@@ -6,9 +6,20 @@ labels:
   load_other: false
 
 dataset:
-  hf_name: "Hibou-Foundation/computer-vision"
-  hf_revision: "main"
   image_transform: "RGB"
+  split_ratio: [0.8, 0.1, 0.1] # Train, val, test
+  providers:
+    hf:
+      - name: "Hibou-Foundation/computer-vision"
+        revision: "main"
+#    aws_s3:
+#      - bucket: "ultralytics-datasets"
+#        folder: "coco128"
+#      - bucket: "ultralytics-datasets"
+#        folder: "test"
+    local:
+      - path: "datasets/drone_test/"
+
 
 #https://docs.ultralytics.com/modes/train/
 train:

@@ -29,7 +29,7 @@ async def main():
     # Load dataset
     dataset = Dataset(
         hf_url=config["dataset"]["hf_name"],
-        save_dir=SETTINGS.HF_DATASET_PATH,
+        save_dir=SETTINGS.DATASET_PATH,
         image_transform=config["dataset"]["image_transform"],
         load_label_other=config["labels"]["load_other"]
     )

@@ -25,16 +25,28 @@ if not load_dotenv():
 
 @dataclass
 class Settings:
-    HF_TOKEN: str
-    WANDB_API_KEY: str
-    HF_DATASET_PATH: str
+    # TOKENS
+    TOKEN_HF: str
+    TOKEN_WANDB: str
+    TOKEN_AWS: str
+
+    # DATASET
+    DATASET_PATH: str
+
+    # MODELS
     MODEL_DIRECTORY: Path
-    AI_DEVICE: str
+
+    #RUNS
     RUNS_DIRECTORY: Path
 
+    # AI
+    AI_DEVICE: str
+
+    # LOGS
     LOG_LEVEL: str
     LOG_WANDB_ENABLE: bool
 
+    # DB
     DB_FILE: str
 
 
@@ -50,9 +62,10 @@ def parse_bool(value: str) -> bool:
 
 try:
     SETTINGS = Settings(
-        HF_TOKEN=os.getenv("HF_TOKEN"),
-        WANDB_API_KEY=os.getenv("WANDB_API_KEY"),
-        HF_DATASET_PATH=os.getenv("HF_DATASET_PATH"),
+        TOKEN_HF=os.getenv("TOKEN_HF"),
+        TOKEN_WANDB=os.getenv("TOKEN_WANDB"),
+        TOKEN_AWS=os.getenv("TOKEN_AWS"),
+        DATASET_PATH=os.getenv("DATASET_PATH"),
         MODEL_DIRECTORY=Path(os.getenv("MODEL_DIRECTORY")),
         RUNS_DIRECTORY=Path(os.getenv("RUNS_DIRECTORY")),
         AI_DEVICE=os.getenv("AI_DEVICE"),

@@ -1,6 +1,6 @@
+from managers.dataset.dataset import Dataset
 from src.logger import CustomLogger
 from src.settings import SETTINGS
-from src.dataset import Dataset
 from src.arguments import args
 from src.model import Model
 
@@ -18,19 +18,18 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     dataset = Dataset(
-        hf_url=config["dataset"]["hf_name"],
-        save_dir=SETTINGS.HF_DATASET_PATH,
-        image_transform=config["dataset"]["image_transform"],
-        load_label_other=config["labels"]["load_other"]
+        providers=config["dataset"]["providers"],
+        image_transform= config["dataset"]["image_transform"],
+        save_dir=SETTINGS.DATASET_PATH,
+        split_ratio=config["dataset"]["split_ratio"],
+        seed = config["reproducibility"]["seed"],
     )
+
+    dataset.download()
+    dataset.merge()
+
     logger.info("Splitting dataset into train, validation and test sets.")
-    dataset.split(
-        seed=config["reproducibility"]["seed"],
-        base_split="train_validation_test",
-        label_column="class_id",
-    )
-    logger.info("Exporting dataset to YOLO format.")
-    dataset.export_to_yolo()
+    dataset.split()
 
     logger.info("Saving dataset settings.")
     dataset.save_dataset_settings()
