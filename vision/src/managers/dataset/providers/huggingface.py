@@ -1,9 +1,9 @@
-from managers.dataset.providers.base import BaseProvider
+from src.managers.dataset.providers.base import BaseProvider
+from src.logger import CustomLogger
 from huggingface_hub import login
 from huggingface_hub import HfApi
 from datasets import load_dataset
-from logger import CustomLogger
-from settings import SETTINGS
+from src.settings import SETTINGS
 from pathlib import Path
 from tqdm import tqdm
 

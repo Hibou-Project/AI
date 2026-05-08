@@ -1,6 +1,6 @@
-from managers.dataset.providers.base import BaseProvider
-from logger import CustomLogger
-from settings import SETTINGS
+from src.managers.dataset.providers.base import BaseProvider
+from src.logger import CustomLogger
+from src.settings import SETTINGS
 from pathlib import Path
 from tqdm import tqdm
 

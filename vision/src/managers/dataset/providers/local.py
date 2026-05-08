@@ -1,4 +1,4 @@
-from managers.dataset.providers.base import BaseProvider
+from src.managers.dataset.providers.base import BaseProvider
 from pathlib import Path
 
 

@@ -1,4 +1,4 @@
-from managers.dataset.dataset import Dataset
+from src.managers.dataset.dataset import Dataset
 from src.logger import CustomLogger
 from src.settings import SETTINGS
 from src.arguments import args

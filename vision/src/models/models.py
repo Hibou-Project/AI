@@ -1,7 +1,6 @@
-from sqlalchemy import DateTime, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime, timezone
-from models.base import Base
+from src.models.base import Base
+from sqlalchemy import String
 
 
 class Model(Base):

@@ -3,7 +3,7 @@ from sqlalchemy import inspect, text, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.engine import Connection
 from src.settings import SETTINGS
-from models.base import Base
+from src.models.base import Base
 
 
 class Database:

@@ -1,13 +1,13 @@
+from src.managers.dataset.dataset import Dataset
 from src.models import Model as DbModel
 from src.logger import CustomLogger
 from src.settings import SETTINGS
+from src.utils.db import Database
 from src.models import Benchmark
-from src.dataset import Dataset
 from src.models import Hardware
 from src.arguments import args
 from src.models import Format
 from sqlalchemy import select
-from utils.db import Database
 from src.model import Model
 
 import asyncio
@@ -28,19 +28,19 @@ async def main():
 
     # Load dataset
     dataset = Dataset(
-        hf_url=config["dataset"]["hf_name"],
+        providers=config["dataset"]["providers"],
+        image_transform= config["dataset"]["image_transform"],
         save_dir=SETTINGS.DATASET_PATH,
-        image_transform=config["dataset"]["image_transform"],
-        load_label_other=config["labels"]["load_other"]
+        split_ratio=config["dataset"]["split_ratio"],
+        seed = config["reproducibility"]["seed"],
     )
+
+    dataset.download()
+    dataset.merge()
     logger.info("Splitting dataset into train, validation and test sets.")
-    dataset.split(
-        seed=config["reproducibility"]["seed"],
-        base_split="train_validation_test",
-        label_column="class_id",
-    )
-    logger.info("Exporting dataset to YOLO format.")
-    dataset.export_to_yolo()
+    dataset.split()
+
+    logger.info("Saving dataset settings.")
     dataset.save_dataset_settings()
 
     # Load model

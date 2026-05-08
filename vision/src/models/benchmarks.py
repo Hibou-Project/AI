@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, Float, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, UniqueConstraint
 from datetime import datetime, timezone
-from models.base import Base
+from src.models.base import Base
 
 
 class Benchmark(Base):

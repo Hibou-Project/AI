@@ -1,7 +1,7 @@
-from managers.dataset.providers.huggingface import HuggingFaceProviders
-from managers.dataset.providers.local import LocalProvider
-from managers.dataset.providers.aws_s3 import AWSProvider
-from managers.dataset.utils.files import list_files
+from src.managers.dataset.providers.huggingface import HuggingFaceProviders
+from src.managers.dataset.providers.local import LocalProvider
+from src.managers.dataset.providers.aws_s3 import AWSProvider
+from src.managers.dataset.utils.files import list_files
 from src.logger import CustomLogger
 from pathlib import Path
 from tqdm import tqdm
@@ -12,7 +12,7 @@ import yaml
 import re
 import os
 
-from utils.image import get_image_channels_from_filter
+from src.utils.image import get_image_channels_from_filter
 
 logger = CustomLogger("Dataset").get_logger()
 
