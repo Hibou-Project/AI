@@ -31,7 +31,7 @@ class CustomLogger:
 
         # Colored formatter for console
         console_formatter = colorlog.ColoredFormatter(
-            "%(log_color)s%(levelname)s %(name)s %(message)s",
+            "%(log_color)s%(levelname)s [%(name)s] %(message)s",
             log_colors={
                 "DEBUG": "cyan",
                 "INFO": "green",
