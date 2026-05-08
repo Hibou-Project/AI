@@ -1,6 +1,6 @@
 <img src="https://avatars.githubusercontent.com/u/232561603?s=200&v=4" width="100px" align="left">
 
-### `Hibou Paper`
+### `Hibou AI`
 Hibou AI tools, train, validate, benchmark models
 </br>
 
