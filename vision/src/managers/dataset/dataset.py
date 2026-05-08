@@ -102,12 +102,17 @@ class Dataset:
             self._dataset_target_path.mkdir(parents=True)
             logger.info(f"Create dataset directory: {self._dataset_target_path}")
 
+        rng = random.Random(self._seed)
+
         i = 0
 
         for sub_dataset in self.sub_dataset:
             dataset_dir = sub_dataset.get_dataset_dir()
 
             sampling_ratio = sub_dataset.get_dataset_sampling_ratio()
+
+            if not 0 < sampling_ratio <= 1:
+                raise ValueError(f"Invalid sampling_ratio={sampling_ratio}")
 
             # Collect files
             files = list_files(
@@ -117,10 +122,11 @@ class Dataset:
                 recursive=False,
             )
 
+            # Shuffle for reproducibility
+            rng.shuffle(files)
+
             # Apply sampling ratio
             if sampling_ratio < 1.0:
-                random.shuffle(files)
-
                 n_samples = max(
                     1,
                     int(len(files) * sampling_ratio)
@@ -148,15 +154,14 @@ class Dataset:
                     )
                     continue
 
-                new_img_file_name = f"{i}{file.suffix}"
-                new_label_file_name = f"{i}.txt"
-
                 target_img_path = (
-                        self._dataset_target_path / new_img_file_name
+                        self._dataset_target_path
+                        / f"{i}{file.suffix}"
                 )
 
                 target_label_path = (
-                        self._dataset_target_path / new_label_file_name
+                        self._dataset_target_path
+                        / f"{i}.txt"
                 )
 
                 shutil.copy(file, target_img_path)
