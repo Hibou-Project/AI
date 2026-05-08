@@ -10,10 +10,11 @@ import boto3
 logger = CustomLogger("AWS Provider").get_logger()
 
 class AWSProvider(BaseProvider):
-    def __init__(self, bucket: str, folder: str, region: str):
+    def __init__(self, bucket: str, folder: str, region: str, sampling_ratio: float = 1.0):
         self.bucket = bucket
         self._folder = folder
         self.name = f"{bucket}_{folder}"
+        self._sampling_ratio = sampling_ratio
 
         session = boto3.Session(
             aws_access_key_id=SETTINGS.TOKEN_AWS_KEY_ID,
@@ -31,6 +32,9 @@ class AWSProvider(BaseProvider):
 
     def get_dataset_dir(self):
         return self._dataset_target_path
+
+    def get_dataset_sampling_ratio(self):
+        return self._sampling_ratio
 
     def download(self):
 

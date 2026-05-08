@@ -11,11 +11,12 @@ logger = CustomLogger("Hugging Face").get_logger()
 
 
 class HuggingFaceProviders(BaseProvider):
-    def __init__(self, name, hf_revision="main"):
+    def __init__(self, name, hf_revision="main", sampling_ratio: float = 1.0):
         self._dataset_taget_path = None
         self.hf_revision = hf_revision
         self._dataset = None
         self.name = name
+        self._sampling_ratio = sampling_ratio
         login(SETTINGS.TOKEN_HF)
 
         self._dataset_taget_path = Path(SETTINGS.DATASET_PATH) / ".downloads" / str("hf_" + self.name.replace("/", "_"))
@@ -24,6 +25,9 @@ class HuggingFaceProviders(BaseProvider):
         self._dataset = load_dataset(self.name, revision=self.hf_revision)
         logger.info(f"Dataset downloaded to {self._dataset_taget_path}, starting export...")
         self._save()
+
+    def get_dataset_sampling_ratio(self):
+        return self._sampling_ratio
 
     def get_dataset_dir(self):
         return self._dataset_taget_path
@@ -57,7 +61,6 @@ class HuggingFaceProviders(BaseProvider):
                 logger.info("Dataset already exported. Skipping")
                 return True
         return False
-
 
     def _save(self):
         if self._dataset is None:

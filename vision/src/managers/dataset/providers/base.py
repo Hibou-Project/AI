@@ -11,6 +11,10 @@ class BaseProvider(ABC):
     def get_dataset_dir(self):
         pass
 
+    @abstractmethod
+    def get_dataset_sampling_ratio(self) -> float:
+        pass
+
     # @abstractmethod
     # def save(self, save_dir: str, image_transform: str):
     #     pass

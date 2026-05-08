@@ -12,10 +12,12 @@ dataset:
     hf:
       - name: "Hibou-Foundation/computer-vision"
         revision: "main"
+        sampling_ratio: 1
     aws_s3:
       - bucket: "axair-datasets"
         region: "eu-central-1"
         folder: "RGB/UAV/ODIN/"
+        sampling_ratio: 1
 #    local:
 #      - path: "datasets/drone_test/"
 

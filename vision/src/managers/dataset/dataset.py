@@ -40,19 +40,24 @@ class Dataset:
                     self.sub_dataset.append(
                         HuggingFaceProviders(
                             name=config["name"],
-                            hf_revision=config["revision"])
+                            hf_revision=config["revision"],
+                            sampling_ratio=config["sampling_ratio"]
+                        )
+
                     )
                 elif key == "aws_s3":
                     self.sub_dataset.append(
                         AWSProvider(
                             bucket=config["bucket"],
                             folder=config["folder"],
-                            region=config["region"]
+                            region=config["region"],
+                            sampling_ratio=config["sampling_ratio"]
                         )
                     )
                 elif key == "local":
                     self.sub_dataset.append(LocalProvider(
-                        local_path=Path(config["path"])
+                        local_path=Path(config["path"]),
+                        sampling_ratio=config["sampling_ratio"]
                     ))
                 else:
                     raise ValueError(f"Invalid provider: {key}")
@@ -102,6 +107,9 @@ class Dataset:
         for sub_dataset in self.sub_dataset:
             dataset_dir = sub_dataset.get_dataset_dir()
 
+            sampling_ratio = sub_dataset.get_dataset_sampling_ratio()
+
+            # Collect files
             files = list_files(
                 directory=dataset_dir,
                 extensions=self.ALLOWED_EXTENSIONS,
@@ -109,33 +117,50 @@ class Dataset:
                 recursive=False,
             )
 
+            # Apply sampling ratio
+            if sampling_ratio < 1.0:
+                random.shuffle(files)
+
+                n_samples = max(
+                    1,
+                    int(len(files) * sampling_ratio)
+                )
+
+                files = files[:n_samples]
+
+            logger.info(
+                f"Dataset {dataset_dir}: "
+                f"using {len(files)} files "
+                f"(sampling_ratio={sampling_ratio})"
+            )
+
+            # Merge dataset
             for file in tqdm(
                     files,
-                    desc=f"Processing {dataset_dir}",
+                    desc=f"Merging {dataset_dir.name}",
                     unit="file"
             ):
-                root_directory = file.parent
-                img_extension_name = file.suffix
-                root_file_name = file.stem
-                label_file_name = root_file_name + ".txt"
+                label_path = dataset_dir / f"{file.stem}.txt"
 
-                new_img_file_name = f"{i}{img_extension_name}"
-                new_label_file_name = f"{i}.txt"
-
-                if not (dataset_dir / label_file_name).exists():
+                if not label_path.exists():
                     logger.warning(
-                        f"Label file not found: {dataset_dir / label_file_name}, skipping"
+                        f"Label file not found: {label_path}, skipping"
                     )
                     continue
 
-                # Copy image
-                shutil.copy(file, self._dataset_target_path / new_img_file_name)
+                new_img_file_name = f"{i}{file.suffix}"
+                new_label_file_name = f"{i}.txt"
 
-                # Copy label
-                shutil.copy(
-                    root_directory / label_file_name,
-                    self._dataset_target_path / new_label_file_name
+                target_img_path = (
+                        self._dataset_target_path / new_img_file_name
                 )
+
+                target_label_path = (
+                        self._dataset_target_path / new_label_file_name
+                )
+
+                shutil.copy(file, target_img_path)
+                shutil.copy(label_path, target_label_path)
 
                 i += 1
 
@@ -165,8 +190,6 @@ class Dataset:
 
             if label_path.exists():
                 pairs.append((img_path, label_path))
-
-        print(f"Found {len(pairs)} pairs")
 
         random.seed(self._seed)
         random.shuffle(pairs)
