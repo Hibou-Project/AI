@@ -28,7 +28,8 @@ class Settings:
     # TOKENS
     TOKEN_HF: str
     TOKEN_WANDB: str
-    TOKEN_AWS: str
+    TOKEN_AWS_KEY_ID: str
+    TOKEN_AWS_SECRET_KEY: str
 
     # DATASET
     DATASET_PATH: str
@@ -64,7 +65,8 @@ try:
     SETTINGS = Settings(
         TOKEN_HF=os.getenv("TOKEN_HF"),
         TOKEN_WANDB=os.getenv("TOKEN_WANDB"),
-        TOKEN_AWS=os.getenv("TOKEN_AWS"),
+        TOKEN_AWS_KEY_ID=os.getenv("TOKEN_AWS_KEY_ID"),
+        TOKEN_AWS_SECRET_KEY=os.getenv("TOKEN_AWS_SECRET_KEY"),
         DATASET_PATH=os.getenv("DATASET_PATH"),
         MODEL_DIRECTORY=Path(os.getenv("MODEL_DIRECTORY")),
         RUNS_DIRECTORY=Path(os.getenv("RUNS_DIRECTORY")),

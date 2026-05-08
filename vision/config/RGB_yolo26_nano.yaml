@@ -12,13 +12,12 @@ dataset:
     hf:
       - name: "Hibou-Foundation/computer-vision"
         revision: "main"
-#    aws_s3:
-#      - bucket: "ultralytics-datasets"
-#        folder: "coco128"
-#      - bucket: "ultralytics-datasets"
-#        folder: "test"
-    local:
-      - path: "datasets/drone_test/"
+    aws_s3:
+      - bucket: "axair-datasets"
+        region: "eu-central-1"
+        folder: "RGB/UAV/ODIN/"
+#    local:
+#      - path: "datasets/drone_test/"
 
 
 #https://docs.ultralytics.com/modes/train/

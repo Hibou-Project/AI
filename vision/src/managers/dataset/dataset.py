@@ -46,7 +46,9 @@ class Dataset:
                     self.sub_dataset.append(
                         AWSProvider(
                             bucket=config["bucket"],
-                            folder=config["folder"])
+                            folder=config["folder"],
+                            region=config["region"]
+                        )
                     )
                 elif key == "local":
                     self.sub_dataset.append(LocalProvider(

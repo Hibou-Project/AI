@@ -1,52 +1,75 @@
 from managers.dataset.providers.base import BaseProvider
+from logger import CustomLogger
 from settings import SETTINGS
 from pathlib import Path
+from tqdm import tqdm
+
+import logging
 import boto3
 
+logger = CustomLogger("AWS Provider").get_logger()
 
 class AWSProvider(BaseProvider):
-    def __init__(self, bucket: str, folder: str):
-        self.name = self.bucket = bucket
-        self._dataset_taget_path = None
-        self.folder = folder
-        self._s3 = boto3.client(
-            "s3",
-            aws_access_key_id="xxx",
-            aws_secret_access_key="xxx",
-            region_name="eu-central-1"
+    def __init__(self, bucket: str, folder: str, region: str):
+        self.bucket = bucket
+        self._folder = folder
+        self.name = f"{bucket}_{folder}"
+
+        session = boto3.Session(
+            aws_access_key_id=SETTINGS.TOKEN_AWS_KEY_ID,
+            aws_secret_access_key=SETTINGS.TOKEN_AWS_SECRET_KEY,
+            region_name=region
+        )
+
+        self._s3 = session.client("s3")
+
+        self._dataset_target_path = (
+                Path(SETTINGS.DATASET_PATH)
+                / ".downloads"
+                / f"aws_{self.name.replace('/', '_')}"
         )
 
     def get_dataset_dir(self):
-        return self._dataset_taget_path
+        return self._dataset_target_path
 
     def download(self):
-        pass
-        # response = self._s3.list_objects_v2(
-        #     Bucket=self.bucket,
-        #     Prefix=self.folder
-        # )
-        # for obj in response.get("Contents", []):
-        #     s3_key = obj["Key"]
-        #
-        #     # Skip "folder" placeholders
-        #     if s3_key.endswith("/"):
-        #         continue
-        #
-        #     # Local file path
-        #     # relative_path = os.path.relpath(s3_key, self.folder)
-        #     local_file_path = Path(SETTINGS.DATASET_DIR, ".tmp")
-        #
-        #     # Create local subdirectories
-        #     # os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
-        #     local_file_path.mkdir(parents=True, exist_ok=True)
-        #
-        #     print(f"Downloading {s3_key} -> {local_file_path}")
-        #
-        #     self._s3.download_file(
-        #         self.bucket,
-        #         s3_key,
-        #         local_file_path
-        #     )
 
-    # def save(self, save_dir: str, image_transform: str):
-    #     pass
+        if self._dataset_target_path.exists():
+            logging.info("Dataset already downloaded. Skipping")
+            return
+
+        paginator = self._s3.get_paginator("list_objects_v2")
+
+        pages = list(paginator.paginate(
+            Bucket=self.bucket,
+            Prefix=self._folder
+        ))
+
+        total_files = 0
+
+        for page in pages:
+            if "Contents" in page:
+                total_files += len(page["Contents"])
+
+        pbar = tqdm(total=total_files, desc="Downloading dataset from AWS")
+
+        for page in pages:
+            if "Contents" not in page:
+                continue
+
+            for obj in page["Contents"]:
+                key = obj["Key"]
+
+                if key.endswith("/"):
+                    continue
+
+                rel_path = key.removeprefix(self._folder).lstrip("/")
+                local_path = self._dataset_target_path / rel_path
+
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+
+                self._s3.download_file(self.bucket, key, str(local_path))
+
+                pbar.update(1)
+
+        pbar.close()
