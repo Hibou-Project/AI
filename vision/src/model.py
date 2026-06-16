@@ -89,7 +89,7 @@ class Model:
             model_name = f"yolo{selected_version}{self.YOLO_MODEL_SIZE[selected_size]}.pt"
             model_path = model_directory / model_name
 
-            if not model_path.exists():
+            if not model_directory.exists():
                 raise FileNotFoundError(model_path)
 
             self.run_name = "train_" + self._create_run_name(selected_version, selected_size)
