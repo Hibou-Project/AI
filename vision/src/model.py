@@ -26,6 +26,7 @@ class Model:
         'optimizer': 'adamW',
         'cache': False,
         'multi_scale': 0.25,
+        'single_cls': False,
 
         # Augmentation
         'degrees': 5,
