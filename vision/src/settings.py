@@ -63,17 +63,20 @@ def parse_bool(value: str) -> bool:
 
 try:
     SETTINGS = Settings(
-        TOKEN_HF=os.getenv("TOKEN_HF"),
-        TOKEN_WANDB=os.getenv("TOKEN_WANDB"),
-        TOKEN_AWS_KEY_ID=os.getenv("TOKEN_AWS_KEY_ID"),
-        TOKEN_AWS_SECRET_KEY=os.getenv("TOKEN_AWS_SECRET_KEY"),
-        DATASET_PATH=os.getenv("DATASET_PATH"),
-        MODEL_DIRECTORY=Path(os.getenv("MODEL_DIRECTORY")),
-        RUNS_DIRECTORY=Path(os.getenv("RUNS_DIRECTORY")),
-        AI_DEVICE=os.getenv("AI_DEVICE"),
-        LOG_LEVEL=os.getenv("LOG_LEVEL"),
+        TOKEN_HF=os.getenv("TOKEN_HF", ""),
+        TOKEN_WANDB=os.getenv("TOKEN_WANDB", ""),
+        TOKEN_AWS_KEY_ID=os.getenv("TOKEN_AWS_KEY_ID", ""),
+        TOKEN_AWS_SECRET_KEY=os.getenv("TOKEN_AWS_SECRET_KEY", ""),
+        DATASET_PATH=os.getenv("DATASET_PATH", ""),
+        MODEL_DIRECTORY=Path(os.getenv("MODEL_DIRECTORY", "")),
+        RUNS_DIRECTORY=Path(os.getenv("RUNS_DIRECTORY", "")),
+        AI_DEVICE=os.getenv("AI_DEVICE", ""),
+        LOG_LEVEL=os.getenv("LOG_LEVEL", ""),
         LOG_WANDB_ENABLE=parse_bool(os.getenv("LOG_WANDB_ENABLE", "False")),
-        DB_FILE=os.getenv("DB_FILE"),
+        DB_FILE=os.getenv("DB_FILE", ""),
     )
+
+    if not SETTINGS.MODEL_DIRECTORY.exists():
+        SETTINGS.MODEL_DIRECTORY.mkdir(parents=True, exist_ok=True)
 except TypeError as e:
     raise ValueError(f"Invalid value in .env: {e}. Please check the .env file.")
